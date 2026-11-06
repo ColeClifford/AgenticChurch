@@ -43,13 +43,14 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The remote script below is single-quoted, so it must not contain an apostrophe.
           ssh "$USER@$HOST" '
             set -e
             cd ~/AgenticChurch
             git fetch --quiet origin main
             git reset --hard origin/main
             GIT_SHA=$(git rev-parse HEAD) docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
-            # Compose doesn't notice changes to bind-mounted config files, so pick them up.
+            # Compose does not notice changes to bind-mounted config files, so pick them up.
             docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml restart nginx litestream
             docker image prune -f >/dev/null
           '
