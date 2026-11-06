@@ -1,3 +1,5 @@
+import functools
+import hashlib
 import json
 import pathlib
 
@@ -11,7 +13,19 @@ from src.week import get_current_service_week
 router = APIRouter()
 
 TEMPLATES_DIR = pathlib.Path(__file__).resolve().parent.parent / "templates"
+STATIC_DIR = TEMPLATES_DIR.parent / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+@functools.cache
+def static_url(path: str) -> str:
+    """A static file's URL, fingerprinted with its contents. Cloudflare caches /static for
+    hours, so without a new URL a deploy's CSS or JS could reach visitors hours late."""
+    digest = hashlib.sha256((STATIC_DIR / path).read_bytes()).hexdigest()[:12]
+    return f"/static/{path}?v={digest}"
+
+
+templates.env.globals["static_url"] = static_url
 
 
 @router.websocket("/ws/chapel")

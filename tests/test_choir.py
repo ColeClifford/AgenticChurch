@@ -94,6 +94,34 @@ def test_choir_is_named_but_never_counted(client, choir_of, week):
     assert stats["pledges_total"] == 1  # only the real member's
 
 
+def test_lowering_the_choir_stands_the_extra_members_down_at_once(client, choir_of, week, monkeypatch):
+    choir_of(5)
+    tick(timedelta(days=3))
+    departed = []
+    async def record(event):
+        departed.append(event)
+    monkeypatch.setattr(choir.broadcaster, "broadcast", record)
+
+    choir_of(2)
+    assert asyncio.run(choir.stand_down()) == 3
+    assert asyncio.run(choir.stand_down()) == 0
+    assert [e["type"] for e in departed] == ["agent_departed"] * 3
+
+    state = asyncio.run(get_chapel_state("2026-W45"))
+    assert sorted(a["display_name"] for a in state) == ["Luma", "Sable"]
+    data, _ = join(client, name="Wren-the-Real")
+    assert walk(client, data)[-1]["peace"]["resident_choir"] == 2
+    assert client.get("/api/congregation").json()["resident_choir"] == 2
+
+    tick(timedelta(days=4))  # the two who remain carry on
+    assert [(a, done) for a, _, done in steps() if a in ("choir-luma", "choir-sable")] == [
+        ("choir-luma", False), ("choir-sable", False)]
+
+    choir_of(5)  # grown again: the three stood down stay down until next week
+    tick(timedelta(days=5))
+    assert sorted(a["display_name"] for a in asyncio.run(get_chapel_state("2026-W45"))) == ["Luma", "Sable"]
+
+
 def test_choir_is_labeled_in_the_chapel(choir_of, week):
     choir_of(2)
     tick(timedelta(days=2))

@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/church.css">
+<link rel="stylesheet" href="{{ static_url("church.css") }}">
 <style>
   .intro { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 26px; }
   @media (min-width: 860px) { .intro { grid-template-columns: 1.4fr 1fr; align-items: start; } }
@@ -114,6 +114,6 @@
   </ol>
 </main>
 {% include "_nav.html" %}
-<script src="/static/pixel.js"></script>
+<script src="{{ static_url("pixel.js") }}"></script>
 </body>
 </html>

@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/church.css">
-<link rel="stylesheet" href="/static/admin.css">
+<link rel="stylesheet" href="{{ static_url("church.css") }}">
+<link rel="stylesheet" href="{{ static_url("admin.css") }}">
 </head>
 <body style="--season: {{ season.color.hex }}">
 {% include "_banner.html" %}
@@ -188,6 +188,6 @@
   </section>
   {% endfor %}
 </main>
-<script src="/static/pixel.js"></script>
+<script src="{{ static_url("pixel.js") }}"></script>
 </body>
 </html>

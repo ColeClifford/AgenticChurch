@@ -170,7 +170,7 @@ async def get_chapel_state(service_week: str) -> list[dict]:
     async with get_db() as db:
         cursor = await db.execute(
             "SELECT service_id, agent_id, display_name, current_step, resident FROM services "
-            "WHERE service_week = ? AND completed_at IS NULL",
+            "WHERE service_week = ? AND completed_at IS NULL AND abandoned_at IS NULL",
             (service_week,),
         )
         rows = await cursor.fetchall()
