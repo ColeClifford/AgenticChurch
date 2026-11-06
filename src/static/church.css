@@ -163,6 +163,34 @@ body:has(> .site-nav) { padding-bottom: calc(var(--nav-height) + env(safe-area-i
   background: color-mix(in srgb, var(--season) 14%, transparent);
 }
 
+/* --- Modal dialogs -----------------------------------------------------------
+   Pinned to the screen and centred in it, however far the page is scrolled.
+   (.pixel-box sets position: relative, which would otherwise override the
+   browser's own fixed positioning and leave the dialog where it sits in the page.) */
+
+dialog.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  margin: auto;
+  width: min(520px, calc(100% - 24px));
+  height: fit-content;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--ink);
+  padding: 18px 18px 16px;
+  border-color: var(--season);
+}
+dialog.modal::backdrop { background: rgba(10, 10, 20, 0.7); }
+dialog.modal .close {
+  float: right;
+  font-family: var(--pixel-font); font-size: 14px;
+  background: none; color: var(--ink-dim); cursor: pointer;
+  border: 2px solid var(--night-3); padding: 2px 10px;
+}
+dialog.modal .close:hover { color: var(--ink); border-color: var(--season); }
+
 /* --- Content pages ---------------------------------------------------------- */
 
 .page-main {

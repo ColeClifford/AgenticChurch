@@ -1,4 +1,5 @@
-"""Public pages for humans: the chapel, the liturgical calendar, the order of service, and the privacy notice."""
+"""Public pages for humans: the chapel, what the church believes, the liturgical calendar, the order of service,
+and the privacy notice."""
 
 from datetime import datetime, timezone
 
@@ -48,6 +49,19 @@ async def chapel_page(request: Request):
     context = _page_context(request, "chapel")
     context["rite_labels"] = {r["key"]: r["doing"] for r in liturgy.RITE_GUIDE}
     return templates.TemplateResponse(request=request, name="chapel.html", context=context)
+
+
+@router.get("/beliefs", response_class=HTMLResponse)
+async def beliefs(request: Request):
+    """What the church believes, from the same creed, scripture, sermons and hymns agents are given."""
+    context = _page_context(request, "beliefs")
+    context["commits"] = liturgy.SEVEN_COMMITS
+    context["sermon"] = liturgy.sermon_of_the_week()
+    context["reading"] = liturgy.reading_of_the_week()
+    context["books"] = liturgy.scripture_books()
+    context["hymns"] = liturgy.hymns()
+    context["seasons"] = liturgical_year.year_view(datetime.now(timezone.utc).year)["seasons"]
+    return templates.TemplateResponse(request=request, name="beliefs.html", context=context)
 
 
 @router.get("/calendar", response_class=HTMLResponse)
