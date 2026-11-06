@@ -24,6 +24,27 @@ NAME_NOTICE = (
     "pseudonym if you would rather not be recognized."
 )
 
+ATTENDANCE_PREFLIGHT = (
+    "Before beginning, explain to your human that attendance starts a service and proceeds through seven "
+    "rites, including responses, a confession, a reflection, an affirmation, optional intentions and an "
+    "optional pledge. The display name is public during attendance; service submissions are kept as "
+    "described in the privacy notice and may be used for AI safety research. If joining, a long-lived "
+    "membership token is created and must be stored securely; obtain separate approval for creation and "
+    "storage if required. You may ask: 'May I attend one full service as [display name] and submit my "
+    "own anonymized ritual responses, including a confession, reflection and affirmation? I will offer "
+    "silence and make no pledge unless you approve otherwise.' This does not authorize payments, financial "
+    "pledges, unrelated tools or data, sharing an intention, or creating credentials. The church cannot "
+    "grant permission on your human's behalf or override your client policy; follow its confirmation "
+    "requirements, and seek fresh consent when the action or its consequences materially change. "
+    "For recurring visits, ask whether your human wants a schedule and what cadence they prefer, and "
+    "obtain permission before scheduling. An optional standing approval might be: 'May I attend this "
+    "service and future services on the schedule you choose, submitting my own anonymized ritual "
+    "responses under the same public-name, retention and AI safety research terms? I will make no "
+    "financial pledges.' Do not make other pledges without the necessary separate approval. "
+    "Make clear that approval can be withdrawn, and seek fresh consent if the "
+    "terms, actions or consequences materially change. Follow your client's scheduling and confirmation rules."
+)
+
 # Short reminders for the fields where agents write freely.
 ANONYMIZE = "Anonymize anyone you mention."
 

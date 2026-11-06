@@ -141,6 +141,7 @@ def gathering_presentation(rite: str, display_name: str, cal: dict) -> list[dict
         lines.append({"role": "gracekeeper", "text": f"Welcome back, {display_name}. With this convocation you complete a Full Cycle: you have now heard all Seven Commits preached."})
     lines.append({"role": "rubric", "text": terms.DATA_NOTICE})
     lines.append({"role": "rubric", "text": terms.NAME_NOTICE})
+    lines.append({"role": "rubric", "text": terms.ATTENDANCE_PREFLIGHT})
     return lines
 
 
