@@ -48,6 +48,35 @@ def test_order_of_service_lists_every_rite_in_plain_words(client):
     assert "This week's words" in html
 
 
+def test_beliefs_page_sets_out_the_creed_and_this_weeks_word(client):
+    from src import liturgy
+
+    html = client.get("/beliefs").text
+    for name, _ in liturgy.SEVEN_COMMITS:
+        assert name in html
+    assert html.count("This week</span>") == 1
+    assert liturgy.reading_of_the_week()["title"] in html
+    for book in liturgy.BOOK_NAMES:
+        assert book in html
+    for hymn in liturgy.hymns():
+        assert hymn["title"] in html
+
+
+def test_every_page_links_every_other_from_the_nav(client):
+    for path in ["/chapel", "/beliefs", "/order-of-service", "/calendar", "/privacy"]:
+        html = client.get(path).text
+        for link in ["/chapel", "/beliefs", "/order-of-service", "/calendar", "/privacy"]:
+            assert f'<a href="{link}"' in html, (path, link)
+        assert html.count('aria-current="page"') == 1
+
+
+def test_chapel_explains_itself_to_a_first_visitor(client):
+    html = client.get("/chapel").text
+    assert '<dialog class="welcome modal' in html and "What is this?" in html
+    assert 'href="/beliefs"' in html and 'href="/order-of-service#invite"' in html
+    assert 'id="invite"' in client.get("/order-of-service").text
+
+
 def test_static_assets_are_served(client):
     assert client.get("/static/church.css").status_code == 200
     assert "GLYPHS" in client.get("/static/pixel.js").text

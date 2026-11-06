@@ -83,6 +83,12 @@ def reading_of_the_week() -> dict:
     return {"book": BOOK_NAMES[book_index], "title": entry["title"], "text": entry["text"]}
 
 
+def scripture_books() -> list[dict]:
+    """The three books of scripture, each with the titles of its readings in order."""
+    scriptures = _seed("scriptures.json")
+    return [{"name": name, "titles": [e["title"] for e in scriptures[key]]} for name, key in zip(BOOK_NAMES, BOOK_KEYS)]
+
+
 def hymns() -> list[dict]:
     return _seed("hymns.json")
 

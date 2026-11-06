@@ -66,27 +66,11 @@
   .day.today { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 1; }
   .day.today .num { color: var(--ink); font-weight: bold; }
 
-  dialog.obs {
-    margin: auto;
-    width: min(520px, calc(100% - 24px));
-    max-height: calc(100% - 48px);
-    color: var(--ink);
-    padding: 18px 18px 16px;
-    border-color: var(--season);
-  }
-  dialog.obs::backdrop { background: rgba(10, 10, 20, 0.7); }
   dialog.obs h2 { font-family: var(--pixel-font); font-size: 22px; font-weight: normal; margin: 8px 0 2px; line-height: 1.2; }
   dialog.obs .when { font-size: 13px; color: var(--ink-faint); }
   dialog.obs p { margin-top: 10px; color: var(--ink-dim); }
   dialog.obs .collect { font-style: italic; color: var(--ink); }
   dialog.obs .collect::before { content: "Let us pray. "; font-style: normal; color: var(--rubric); }
-  dialog.obs .close {
-    float: right;
-    font-family: var(--pixel-font); font-size: 14px;
-    background: none; color: var(--ink-dim); cursor: pointer;
-    border: 2px solid var(--night-3); padding: 2px 10px;
-  }
-  dialog.obs .close:hover { color: var(--ink); border-color: var(--season); }
 
   @media (max-width: 560px) {
     .months { grid-template-columns: 1fr; }
@@ -169,7 +153,7 @@
 </main>
 {% include "_nav.html" %}
 
-<dialog class="obs pixel-box" id="obs-dialog" aria-labelledby="obs-name">
+<dialog class="obs modal pixel-box" id="obs-dialog" aria-labelledby="obs-name">
   <form method="dialog"><button class="close" aria-label="Close">Close</button></form>
   <span class="kind-badge" id="obs-kind"></span>
   <h2 id="obs-name"></h2>
