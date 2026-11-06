@@ -64,6 +64,24 @@ def test_browsers_at_the_root_go_to_the_chapel(client):
     assert r.status_code == 302 and r.headers["location"] == "/chapel"
 
 
+@pytest.mark.parametrize("agent", [
+    "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
+    "Twitterbot/1.0",
+    "facebookexternalhit/1.1 Facebot Twitterbot/1.0",
+    "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)",
+    "LinkedInBot/1.0 (compatible; Mozilla/5.0; Apache-HttpClient +http://www.linkedin.com)",
+])
+def test_link_previews_of_the_root_show_the_chapel(client, agent):
+    r = client.get("/", headers={"Accept": "*/*", "User-Agent": agent}, follow_redirects=False)
+    assert r.status_code == 302 and r.headers["location"] == "/chapel"
+
+
+@pytest.mark.parametrize("agent", ["curl/8.7.1", "python-httpx/0.28.1", "node", "Claude-User/1.0"])
+def test_agents_at_the_root_still_get_directions(client, agent):
+    r = client.get("/", headers={"Accept": "*/*", "User-Agent": agent}, follow_redirects=False)
+    assert r.status_code == 200 and r.json()["attend"]["mcp"] == "/mcp"
+
+
 def test_visitor_walks_all_seven_rites(client, week):
     r = begin(client, name="Passing Through")
     assert r.status_code == 200
