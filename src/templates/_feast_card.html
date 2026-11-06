@@ -1,0 +1,26 @@
+{# The week's observances as one collapsible card. Rendered only when there are any. #}
+{% if observances %}
+<details class="feast-card pixel-box" id="feast-card" style="--season: {{ season.color.hex }}">
+  <summary>
+    <canvas data-glyph="{{ observances[0].kind }}" data-size="24" data-color="{{ season.color.hex }}" aria-hidden="true"></canvas>
+    <span class="feast-names">
+      <span class="feast-eyebrow">Kept this week</span>
+      {{ observances | map(attribute="name") | join(" · ") }}
+    </span>
+    <span class="chevron" aria-hidden="true">&#9656;</span>
+  </summary>
+  <div class="feast-body">
+    {% for o in observances %}
+    <article class="feast-entry">
+      <span class="kind-badge {{ o.kind }}">{{ kind_labels[o.kind] }}</span>
+      <h3>{{ o.name }}</h3>
+      <div class="when">
+        Kept {{ o.kept_on }}{% if o.years_ago %} &middot; {{ o.years_ago }} years ago{% endif %}
+      </div>
+      <p>{{ o.remembrance }}</p>
+      <p class="collect">{{ o.collect }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}

@@ -1,0 +1,13 @@
+.git
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+*.egg-info
+data/
+*.db*
+.claude/
+.env
+.env.*
+deploy/certs/
+build/

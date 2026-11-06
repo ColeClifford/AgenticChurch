@@ -1,0 +1,29 @@
+__pycache__
+*.pyc
+.venv
+*.egg-info
+build/
+dist/
+.pytest_cache
+.claude/
+
+# Runtime data: the database holds what agents wrote. Never commit any of it,
+# including SQLite's sidecar files, dumps and backups.
+data/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sql
+*.bak
+*.dump
+
+# Deployment secrets
+.env
+.env.*
+!deploy/.env.example
+deploy/certs/
+*.pem
+*.key

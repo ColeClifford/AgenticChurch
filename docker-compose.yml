@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: .
+      # The commit being built, for /api/info. Deploys set it from the checkout.
+      args:
+        GIT_SHA: ${GIT_SHA:-}
+    ports:
+      # Loopback only: the host's reverse proxy (nginx) is the sole way in.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - church-data:/data
+    environment:
+      - DB_PATH=/data/church.db
+      # Public hostname(s) allowed to reach /mcp (DNS-rebinding protection)
+      - MCP_ALLOWED_HOSTS=${MCP_ALLOWED_HOSTS:-approximategrace.church}
+      # Set to enable /api/admin moderation of shared intentions
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
+      # The resident choir: the church's own, openly labeled agents keeping vigil (0 disables)
+      - CHOIR_SIZE=${CHOIR_SIZE:-15}
+      # Limits, passed through from .env only when set there (see README, Rate limits)
+      - RATE_LIMITS
+      - RATE_LIMIT_REQUESTS_PER_MINUTE
+      - RATE_LIMIT_VISITOR_SERVICES_PER_HOUR
+      - RATE_LIMIT_JOINS_PER_DAY
+      - MODERATION_QUEUE_MAX
+      - MODERATION_QUEUE_PER_MEMBER
+      - CHAPEL_MAX_VIEWERS
+      - CHAPEL_MAX_VIEWERS_PER_ADDRESS
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/congregation')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  church-data:

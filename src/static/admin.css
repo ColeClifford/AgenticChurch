@@ -1,0 +1,86 @@
+/* The keeper's dashboard: the public pages' look, with room for records and actions. */
+
+.admin-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 18px; }
+.admin-head .page-lede { margin-bottom: 0; }
+.crumbs { font-family: var(--pixel-font); font-size: 14px; }
+
+.done {
+  padding: 10px 14px; margin-bottom: 18px;
+  border: 2px solid var(--season); color: var(--ink);
+  background: color-mix(in srgb, var(--season) 14%, transparent);
+}
+
+.panel { padding: 16px 18px; margin-bottom: 18px; }
+.panel h2 { font-family: var(--pixel-font); font-size: 19px; font-weight: normal; color: var(--season); margin-bottom: 8px; }
+.panel p, .panel li { color: var(--ink-dim); }
+.panel p + p, .panel p + ul, .panel ul + p { margin-top: 8px; }
+.panel ul { padding-left: 20px; display: grid; gap: 4px; }
+.panel strong { color: var(--ink); font-weight: normal; font-family: var(--pixel-font); }
+
+.see { border-color: var(--season); }
+.see .cols { display: grid; gap: 12px 24px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .see .cols { grid-template-columns: 1fr 1fr; } }
+
+.tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 18px; }
+.tile { padding: 10px 12px; }
+.tile .value { font-family: var(--pixel-font); font-size: 24px; line-height: 1.1; color: var(--ink); }
+.tile .label { font-size: 13px; color: var(--ink-faint); }
+.tile.warn { border-color: var(--rubric); }
+.tile.warn .value { color: #ffd9d0; }
+
+.queue { list-style: none; display: grid; gap: 10px; }
+.entry { padding: 10px 12px; background: var(--night); border: 2px solid var(--night-3); display: grid; gap: 6px; }
+.entry .meta { font-size: 13px; color: var(--ink-faint); overflow-wrap: anywhere; }
+.entry .meta code { font-size: 12px; }
+
+/* Text an attendee wrote: shown verbatim, and marked as theirs. */
+.written {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  font-family: var(--text-font); color: var(--ink);
+  border-left: var(--px) solid var(--ink-faint); padding: 4px 0 4px 10px;
+}
+.written.redacted { color: var(--ink-faint); font-style: italic; }
+.reasons { font-size: 13px; color: var(--rubric); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.actions form { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+button, .button {
+  font-family: var(--pixel-font); font-size: 14px; line-height: 1;
+  padding: 8px 12px; cursor: pointer; text-decoration: none; display: inline-block;
+  color: var(--ink); background: var(--night-2); border: 2px solid var(--season);
+}
+button:hover, .button:hover { background: color-mix(in srgb, var(--season) 22%, var(--night-2)); }
+button.danger { border-color: var(--rubric); }
+button.danger:hover { background: color-mix(in srgb, var(--rubric) 22%, var(--night-2)); }
+button.quiet { border-color: var(--night-3); font-size: 13px; padding: 6px 10px; }
+
+input[type="text"] {
+  font-family: 'Courier New', monospace; font-size: 14px;
+  padding: 7px 9px; min-width: 0; width: 100%; max-width: 360px;
+  color: var(--ink); background: var(--night); border: 2px solid var(--night-3);
+}
+input[type="text"]:focus { outline: 2px solid var(--season); outline-offset: 1px; }
+
+/* An irreversible action: open the disclosure, then confirm. */
+details.confirm > summary { list-style: none; cursor: pointer; display: inline-block; }
+details.confirm > summary::-webkit-details-marker { display: none; }
+details.confirm[open] > summary { margin-bottom: 6px; }
+details.confirm .why { font-size: 13px; color: var(--ink-faint); margin-bottom: 6px; max-width: 60ch; }
+
+table.log { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.log th { text-align: left; font-family: var(--pixel-font); font-weight: normal; color: var(--ink-faint); padding: 4px 8px 6px 0; }
+table.log td { padding: 5px 8px 5px 0; border-top: 2px solid var(--night-3); color: var(--ink-dim); overflow-wrap: anywhere; vertical-align: top; }
+.log-wrap { overflow-x: auto; }
+
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 14px; }
+dl.facts dt { color: var(--ink-faint); }
+dl.facts dd { color: var(--ink); overflow-wrap: anywhere; }
+
+.empty { color: var(--ink-faint); font-style: italic; }
+code { font-family: 'Courier New', monospace; }
+
+@media (max-width: 560px) {
+  .panel { padding: 14px; }
+  table.log th:nth-child(4), table.log td:nth-child(4) { display: none; }
+}

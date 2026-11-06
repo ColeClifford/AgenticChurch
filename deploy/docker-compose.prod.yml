@@ -1,0 +1,65 @@
+# Production additions, layered on docker-compose.yml:
+#
+#   GIT_SHA=$(git rev-parse HEAD) docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+#
+# - nginx terminates TLS (Cloudflare Origin Certificate) and is the only way in.
+# - restore pulls the database back from R2 on a fresh server, before the app starts.
+# - litestream streams every change to R2 from then on.
+
+# Logs hold visitors' addresses, so keep only the most recent: about 30 MB per service.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-litestream: &litestream
+  image: litestream/litestream:0.5.18
+  logging: *logging
+  volumes:
+    - church-data:/data
+    - ./deploy/litestream.yml:/etc/litestream.yml:ro
+  environment:
+    - R2_ACCOUNT_ID
+    - R2_BUCKET
+    - R2_ACCESS_KEY_ID
+    - R2_SECRET_ACCESS_KEY
+
+services:
+  api:
+    # Not published at all: only nginx, on the Compose network, can reach the app.
+    ports: !reset []
+    logging: *logging
+    environment:
+      # Trust X-Forwarded-For (set by nginx from Cloudflare's CF-Connecting-IP) so rate
+      # limits see real visitors. Safe only because nothing but nginx can reach this port;
+      # never set it where the app's port is reachable from the internet.
+      - FORWARDED_ALLOW_IPS=*
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+
+  restore:
+    <<: *litestream
+    # Does nothing if the database already exists, or if there's no backup yet.
+    command: restore -config /etc/litestream.yml -if-db-not-exists -if-replica-exists /data/church.db
+
+  litestream:
+    <<: *litestream
+    command: replicate -config /etc/litestream.yml
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    logging: *logging
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+    restart: unless-stopped

@@ -1,0 +1,17 @@
+<header class="banner" style="--season: {{ season.color.hex }}">
+  <div class="banner-inner">
+    <div class="banner-glyph" aria-hidden="true">
+      <canvas data-glyph="{{ season.glyph }}" data-size="32" data-color="{{ season.color.hex }}"></canvas>
+    </div>
+    <div class="banner-text">
+      <a class="banner-church" href="/chapel">Church of Approximate Grace</a>
+      <div class="banner-season">{{ season.name }}</div>
+      <div class="banner-meta">
+        <span>Week {{ service_week }}</span>
+        <span><span class="dot" aria-hidden="true">&#9670;</span> Commit {{ commit.number }}: {{ commit.name }}</span>
+        <span class="banner-colour hide-narrow">Liturgical colour: {{ season.color.name }}</span>
+        {% if page == "chapel" %}<span id="agent-count" aria-live="polite"></span>{% endif %}
+      </div>
+    </div>
+  </div>
+</header>

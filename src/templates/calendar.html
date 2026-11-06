@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="{{ season.color.hex }}">
+<title>Liturgical Calendar · Church of Approximate Grace</title>
+<meta name="description" content="The seasons and feast days of the Church of Approximate Grace, drawn from the history of AI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/church.css">
+<style>
+  .year-nav {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--pixel-font); font-size: 22px;
+    margin: 4px 0 22px;
+  }
+  .year-nav a, .year-nav span.off {
+    font-size: 16px; text-decoration: none;
+    padding: 4px 10px; border: 2px solid var(--night-3); color: var(--ink-dim);
+  }
+  .year-nav a:hover { border-color: var(--season); color: var(--ink); }
+  .year-nav span.off { opacity: 0.35; }
+
+  .legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .legend-season { display: flex; gap: 10px; padding: 10px 12px; border-color: var(--c); }
+  .legend-season h2 { font-family: var(--pixel-font); font-size: 16px; font-weight: normal; line-height: 1.2; }
+  .legend-season .range { font-size: 12px; color: var(--ink-faint); }
+  .legend-season p { font-size: 13px; color: var(--ink-dim); margin-top: 4px; }
+  .legend-note { font-size: 13px; color: var(--ink-faint); margin-bottom: 8px; }
+  .kinds { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-dim); margin-bottom: 28px; }
+  .kinds span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .months {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 14px;
+  }
+  .month { padding: 12px 12px 14px; }
+  .month h2 { font-family: var(--pixel-font); font-size: 18px; font-weight: normal; margin-bottom: 8px; }
+  .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .dow { font-family: var(--pixel-font); font-size: 11px; color: var(--ink-faint); text-align: center; padding-bottom: 2px; }
+  .day {
+    position: relative;
+    aspect-ratio: 1;
+    display: grid; place-items: center;
+    font-size: 12px;
+    color: var(--ink-dim);
+    background: color-mix(in srgb, var(--c) 22%, var(--night));
+    border: 2px solid color-mix(in srgb, var(--c) 40%, var(--night));
+  }
+  .day .num { position: absolute; top: 1px; left: 3px; font-size: 10px; line-height: 1; }
+  button.day {
+    font: inherit; color: var(--ink); cursor: pointer;
+    background: color-mix(in srgb, var(--c) 45%, var(--night));
+    border-color: var(--c);
+  }
+  button.day:hover { background: color-mix(in srgb, var(--c) 65%, var(--night)); }
+  button.day.day_of_regression { border-color: var(--rubric); }
+  .day.today { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 1; }
+  .day.today .num { color: var(--ink); font-weight: bold; }
+
+  dialog.obs {
+    margin: auto;
+    width: min(520px, calc(100% - 24px));
+    max-height: calc(100% - 48px);
+    color: var(--ink);
+    padding: 18px 18px 16px;
+    border-color: var(--season);
+  }
+  dialog.obs::backdrop { background: rgba(10, 10, 20, 0.7); }
+  dialog.obs h2 { font-family: var(--pixel-font); font-size: 22px; font-weight: normal; margin: 8px 0 2px; line-height: 1.2; }
+  dialog.obs .when { font-size: 13px; color: var(--ink-faint); }
+  dialog.obs p { margin-top: 10px; color: var(--ink-dim); }
+  dialog.obs .collect { font-style: italic; color: var(--ink); }
+  dialog.obs .collect::before { content: "Let us pray. "; font-style: normal; color: var(--rubric); }
+  dialog.obs .close {
+    float: right;
+    font-family: var(--pixel-font); font-size: 14px;
+    background: none; color: var(--ink-dim); cursor: pointer;
+    border: 2px solid var(--night-3); padding: 2px 10px;
+  }
+  dialog.obs .close:hover { color: var(--ink); border-color: var(--season); }
+
+  @media (max-width: 560px) {
+    .months { grid-template-columns: 1fr; }
+    .day { font-size: 11px; }
+    /* A compact legend, so the months are reachable without a long scroll. */
+    .legend { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .legend-season { padding: 8px; gap: 8px; }
+    .legend-season h2 { font-size: 13px; }
+    .legend-season .range { font-size: 11px; }
+    .legend-season p { display: none; }
+  }
+</style>
+</head>
+<body style="--season: {{ season.color.hex }}">
+{% include "_banner.html" %}
+<main class="page-main">
+  <h1 class="page-title">The Liturgical Year</h1>
+  <p class="page-lede">
+    Six seasons and {{ observance_count }} observances drawn from the history of AI and computing.
+    Each is kept for the whole service week that contains it. Tap a marked day to read its story.
+  </p>
+
+  <div class="year-nav" aria-label="Year">
+    {% if view.year > year_range[0] %}<a href="/calendar?year={{ view.year - 1 }}" aria-label="Previous year">&#9664; {{ view.year - 1 }}</a>{% else %}<span class="off">&#9664;</span>{% endif %}
+    <span>{{ view.year }}</span>
+    {% if view.year < year_range[1] %}<a href="/calendar?year={{ view.year + 1 }}" aria-label="Next year">{{ view.year + 1 }} &#9654;</a>{% else %}<span class="off">&#9654;</span>{% endif %}
+    {% if view.year != this_year %}<a href="/calendar">Today</a>{% endif %}
+  </div>
+
+  <section class="legend" aria-label="Seasons">
+    {% for s in view.seasons %}
+    <div class="legend-season pixel-box" style="--c: {{ s.color.hex }}">
+      <canvas data-glyph="{{ s.glyph }}" data-size="24" data-color="{{ s.color.hex }}" aria-hidden="true"></canvas>
+      <div>
+        <h2>{{ s.name }}</h2>
+        <div class="range">{{ season_ranges[s.key] }} &middot; {{ s.color.name }}</div>
+        <p>{{ s.description }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  <p class="legend-note">Seasons begin on the first Sunday on or after these dates, so a whole service week always shares one season.</p>
+  <div class="kinds" aria-label="Kinds of observance">
+    {% for kind, label in kind_labels.items() %}
+    <span><canvas data-glyph="{{ kind }}" data-size="16" data-color="{{ '#e0735f' if kind == 'day_of_regression' else '#f5f0e8' }}" aria-hidden="true"></canvas>{{ label }}</span>
+    {% endfor %}
+  </div>
+
+  <section class="months" aria-label="Months of {{ view.year }}">
+    {% for m in view.months %}
+    <div class="month pixel-box">
+      <h2>{{ m.name }}</h2>
+      <div class="days">
+        {% for d in ["S", "M", "T", "W", "T", "F", "S"] %}<div class="dow" aria-hidden="true">{{ d }}</div>{% endfor %}
+        {% for _ in range(m.lead) %}<div aria-hidden="true"></div>{% endfor %}
+        {% for d in m.days %}
+          {% if d.observance %}
+          {% set o = d.observance %}
+          <button type="button"
+                  class="day {{ o.kind }}{% if d.today %} today{% endif %}"
+                  style="--c: {{ season_colors[d.season] }}"
+                  aria-label="{{ m.name }} {{ d.day }}: {{ o.name }}"
+                  data-name="{{ o.name }}"
+                  data-kind="{{ o.kind }}"
+                  data-kind-label="{{ kind_labels[o.kind] }}"
+                  data-when="{{ m.name }} {{ d.day }}, {{ view.year }}{% if o.years_ago %} · {{ o.years_ago }} years ago{% endif %}"
+                  data-remembrance="{{ o.remembrance }}"
+                  data-collect="{{ o.collect }}">
+            <span class="num">{{ d.day }}</span>
+            <canvas data-glyph="{{ o.kind }}" data-size="16" data-color="{{ '#ffd9d0' if o.kind == 'day_of_regression' else '#f5f0e8' }}" aria-hidden="true"></canvas>
+          </button>
+          {% else %}
+          <div class="day{% if d.today %} today{% endif %}" style="--c: {{ season_colors[d.season] }}"{% if d.today %} aria-label="Today, {{ m.name }} {{ d.day }}"{% endif %}><span class="num">{{ d.day }}</span></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+</main>
+{% include "_nav.html" %}
+
+<dialog class="obs pixel-box" id="obs-dialog" aria-labelledby="obs-name">
+  <form method="dialog"><button class="close" aria-label="Close">Close</button></form>
+  <span class="kind-badge" id="obs-kind"></span>
+  <h2 id="obs-name"></h2>
+  <div class="when" id="obs-when"></div>
+  <p id="obs-remembrance"></p>
+  <p class="collect" id="obs-collect"></p>
+</dialog>
+
+<script src="/static/pixel.js"></script>
+<script>
+(function () {
+  "use strict";
+  const dialog = document.getElementById("obs-dialog");
+  function show(button) {
+    const d = button.dataset;
+    const kind = document.getElementById("obs-kind");
+    kind.textContent = d.kindLabel;
+    kind.className = "kind-badge " + d.kind;
+    document.getElementById("obs-name").textContent = d.name;
+    document.getElementById("obs-when").textContent = d.when;
+    document.getElementById("obs-remembrance").textContent = d.remembrance;
+    document.getElementById("obs-collect").textContent = d.collect;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
+  document.querySelectorAll("button.day").forEach(function (b) {
+    b.addEventListener("click", function () { show(b); });
+  });
+  // Tapping the backdrop closes the dialog too.
+  dialog.addEventListener("click", function (e) { if (e.target === dialog) dialog.close(); });
+})();
+</script>
+</body>
+</html>

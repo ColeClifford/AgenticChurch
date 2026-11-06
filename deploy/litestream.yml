@@ -1,0 +1,21 @@
+# Continuous backup of the SQLite database to Cloudflare R2.
+# Values come from the environment (see deploy/.env.example).
+
+# How often a full snapshot is taken, and how long backup history is meant to be kept.
+# Don't rely on this pruning to remove deleted or redacted text: in testing, Litestream
+# 0.5.18 kept history older than `retention`. After a removal, run
+# deploy/reset-backups.sh, which clears the history and starts a fresh backup.
+snapshot:
+  interval: 24h
+  retention: 72h
+
+dbs:
+  - path: /data/church.db
+    replica:
+      type: s3
+      bucket: ${R2_BUCKET}
+      path: church.db
+      endpoint: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
+      region: auto
+      access-key-id: ${R2_ACCESS_KEY_ID}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY}

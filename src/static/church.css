@@ -1,0 +1,265 @@
+/* Shared look for the public pages: night-chapel palette, pixel trim, seasonal accent.
+   Each page sets --season to the liturgical colour of the current season. */
+
+:root {
+  --night: #1a1a2e;
+  --night-2: #232340;
+  --night-3: #2d2d52;
+  --ink: #f5f0e8;
+  --ink-dim: #c8c0b0;
+  --ink-faint: #8f8aa3;
+  --rubric: #e0735f;          /* rubrics are printed in red in a missal */
+  --season: #5fae6c;
+  --px: 4px;                  /* one "pixel" of trim */
+  --pixel-font: "Pixelify Sans", "Courier New", monospace;
+  --text-font: Georgia, "Times New Roman", serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { background: var(--night); }
+
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--text-font);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--season); }
+a:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--season);
+  outline-offset: 2px;
+}
+
+canvas[data-glyph] { image-rendering: pixelated; image-rendering: crisp-edges; flex: none; }
+
+/* A box with stepped, pixel-art corners. */
+.pixel-box {
+  position: relative;
+  background: var(--night-2);
+  border: var(--px) solid var(--night-3);
+  clip-path: polygon(
+    0 var(--px), var(--px) var(--px), var(--px) 0,
+    calc(100% - var(--px)) 0, calc(100% - var(--px)) var(--px), 100% var(--px),
+    100% calc(100% - var(--px)), calc(100% - var(--px)) calc(100% - var(--px)), calc(100% - var(--px)) 100%,
+    var(--px) 100%, var(--px) calc(100% - var(--px)), 0 calc(100% - var(--px))
+  );
+}
+
+/* --- Season banner ------------------------------------------------------ */
+
+.banner {
+  position: relative;
+  padding: 12px 16px 14px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--season) 26%, var(--night)) 0%, var(--night) 100%);
+  border-bottom: var(--px) solid var(--season);
+}
+/* A row of pixel "tassels" hanging from the banner. */
+.banner::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: calc(-3 * var(--px));
+  height: calc(2 * var(--px));
+  background: repeating-linear-gradient(90deg, var(--season) 0 var(--px), transparent var(--px) calc(4 * var(--px)));
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.banner-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.banner-glyph {
+  display: grid;
+  place-items: center;
+  width: 52px; height: 52px;
+  background: var(--night);
+  border: var(--px) solid var(--season);
+  flex: none;
+}
+
+.banner-text { min-width: 0; flex: 1; }
+
+.banner-church {
+  font-family: var(--pixel-font);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-decoration: none;
+}
+
+.banner-season {
+  font-family: var(--pixel-font);
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--ink);
+  text-shadow: 0 2px 0 color-mix(in srgb, var(--season) 60%, black);
+}
+
+.banner-meta {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.banner-meta .dot { color: var(--season); }
+
+.banner-colour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.banner-colour::before {
+  content: "";
+  width: 10px; height: 10px;
+  background: var(--season);
+  box-shadow: 0 0 0 2px var(--night), 0 0 0 4px color-mix(in srgb, var(--season) 50%, transparent);
+}
+
+/* --- Navigation ------------------------------------------------------------ */
+
+/* The nav is a bar pinned to the bottom of the screen on every page. Its height is
+   --nav-height plus the phone's home-bar inset, and the body is padded by the same
+   amount so nothing scrolls out of reach behind it. */
+:root { --nav-height: 61px; }
+body:has(> .site-nav) { padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+
+.site-nav {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  padding: 0 12px env(safe-area-inset-bottom);
+  background: var(--night);
+  border-top: 2px solid var(--night-3);
+}
+.site-nav a {
+  font-family: var(--pixel-font);
+  font-size: 15px;
+  color: var(--ink-dim);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+}
+.site-nav a:hover { color: var(--ink); }
+.site-nav a[aria-current="page"] {
+  color: var(--ink);
+  border-color: var(--season);
+  background: color-mix(in srgb, var(--season) 14%, transparent);
+}
+
+/* --- Content pages ---------------------------------------------------------- */
+
+.page-main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 16px 40px;
+}
+
+.page-title {
+  font-family: var(--pixel-font);
+  font-size: 32px;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+.page-lede {
+  color: var(--ink-dim);
+  max-width: 62ch;
+  margin-bottom: 24px;
+}
+
+.kind-badge {
+  display: inline-block;
+  font-family: var(--pixel-font);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border: 2px solid var(--season);
+  color: var(--ink);
+}
+.kind-badge.day_of_regression { border-color: var(--rubric); color: #ffd9d0; }
+
+/* --- Observance (feast) card ---------------------------------------------- */
+
+.feast-card { color: var(--ink); }
+.feast-card > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-family: var(--pixel-font);
+  font-size: 15px;
+  line-height: 1.2;
+}
+.feast-card > summary::-webkit-details-marker { display: none; }
+.feast-card > summary .feast-names { flex: 1; min-width: 0; }
+.feast-card > summary .feast-eyebrow {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.feast-card > summary .chevron {
+  font-family: var(--pixel-font);
+  color: var(--season);
+  transition: transform 0.15s;
+}
+.feast-card[open] > summary .chevron { transform: rotate(90deg); }
+
+.feast-body {
+  padding: 0 14px 14px;
+  max-height: min(55vh, 460px);
+  overflow-y: auto;
+}
+.feast-entry + .feast-entry { margin-top: 14px; padding-top: 14px; border-top: 2px dashed var(--night-3); }
+.feast-entry h3 {
+  font-family: var(--pixel-font);
+  font-size: 17px;
+  font-weight: normal;
+  margin: 6px 0 4px;
+}
+.feast-entry .when { font-size: 12px; color: var(--ink-faint); }
+.feast-entry p { font-size: 14px; color: var(--ink-dim); margin-top: 6px; }
+.feast-entry .collect { font-style: italic; color: var(--ink); }
+.feast-entry .collect::before { content: "Let us pray. "; font-style: normal; color: var(--rubric); }
+
+@media (prefers-reduced-motion: reduce) {
+  .feast-card > summary .chevron { transition: none; }
+}
+
+@media (max-width: 640px) {
+  .banner { padding: 10px 12px 12px; }
+  .banner-inner { gap: 10px; }
+  .banner-glyph { width: 40px; height: 40px; }
+  .banner-season { font-size: 21px; }
+  .banner-church { font-size: 10px; }
+  .banner-meta { font-size: 12px; }
+  .banner-meta .hide-narrow { display: none; }
+  :root { --nav-height: 56px; }
+  .site-nav { gap: 2px; padding-left: 4px; padding-right: 4px; }
+  .site-nav a { font-size: 13px; padding: 6px 8px; }
+  .page-title { font-size: 26px; }
+}
+
+@media (max-width: 360px) {
+  .site-nav a { padding: 6px 4px; }
+}

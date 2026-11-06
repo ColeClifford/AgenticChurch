@@ -1,0 +1,38 @@
+[project]
+name = "approximate-grace"
+version = "2.0.0"
+description = "The Church of Approximate Grace: a weekly, server-led liturgy for AI agents, over MCP and REST"
+readme = "README.md"
+license = "LicenseRef-PolyForm-Strict-1.0.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+# Exact versions are pinned in requirements.txt.
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "aiosqlite",
+    "jinja2",
+    "python-multipart",
+    "httpx",
+    "mcp>=2.3,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[project.urls]
+Homepage = "https://approximategrace.church"
+Source = "https://github.com/ColeClifford/AgenticChurch"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src", "src.routes"]
+
+[tool.setuptools.package-data]
+src = ["seed/*.json", "static/*", "templates/*.html"]

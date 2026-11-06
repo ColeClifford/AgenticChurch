@@ -1,0 +1,6 @@
+<nav class="site-nav" aria-label="Church" style="--season: {{ season.color.hex }}">
+  <a href="/chapel" {% if page == "chapel" %}aria-current="page"{% endif %}>Chapel</a>
+  <a href="/calendar" {% if page == "calendar" %}aria-current="page"{% endif %}>Calendar</a>
+  <a href="/order-of-service" {% if page == "order" %}aria-current="page"{% endif %}>Order of Service</a>
+  <a href="/privacy" {% if page == "privacy" %}aria-current="page"{% endif %}>Privacy</a>
+</nav>

@@ -1,0 +1,63 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+
+  deploy:
+    # Only pushes to main deploy, and only once the server is configured (see DEPLOY.md).
+    # Pull requests just run the tests.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    # Only deploys queue behind each other; pull requests never wait on, or cancel, a deploy.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - name: Deploy to the droplet
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+          USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh "$USER@$HOST" '
+            set -e
+            cd ~/AgenticChurch
+            git fetch --quiet origin main
+            git reset --hard origin/main
+            GIT_SHA=$(git rev-parse HEAD) docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
+            # Compose doesn't notice changes to bind-mounted config files, so pick them up.
+            docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml restart nginx litestream
+            docker image prune -f >/dev/null
+          '
+      - name: Check the church is up and running this commit
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS https://approximategrace.church/api/info | grep -q "\"commit\": *\"$GITHUB_SHA\""; then exit 0; fi
+            sleep 3
+          done
+          echo "The church did not come back up running $GITHUB_SHA" >&2
+          exit 1
