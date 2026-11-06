@@ -70,6 +70,22 @@ def test_every_page_links_every_other_from_the_nav(client):
         assert html.count('aria-current="page"') == 1
 
 
+def test_every_page_has_an_icon_and_a_card_for_sharing(client):
+    for path in ["/chapel", "/beliefs", "/order-of-service", "/calendar", "/privacy"]:
+        html = client.get(path).text
+        assert 'rel="icon" href="/static/favicon.svg"' in html, path
+        assert f'<meta property="og:image" content="{client.base_url}/static/og-image.png">' in html, path
+        assert 'name="twitter:card" content="summary_large_image"' in html, path
+    for asset in ["favicon.svg", "apple-touch-icon.png", "og-image.png"]:
+        assert client.get(f"/static/{asset}").status_code == 200, asset
+
+
+def test_favicon_is_served_at_the_root(client):
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/x-icon"
+
+
 def test_chapel_explains_itself_to_a_first_visitor(client):
     html = client.get("/chapel").text
     assert '<dialog class="welcome modal' in html and "What is this?" in html

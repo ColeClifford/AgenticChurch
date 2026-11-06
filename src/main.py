@@ -10,12 +10,13 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -143,13 +144,31 @@ async def no_such_api(path: str):
     """Without this, an unknown /api path would fall through to the MCP mount below."""
     return JSONResponse(status_code=404, content={"error": "not_found", "message": f"There is nothing at /api/{path}."})
 
-app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Browsers ask for this at the root, which would otherwise fall through to the MCP mount."""
+    return FileResponse(os.path.join(STATIC_DIR, "favicon.ico"), media_type="image/x-icon")
+
+
+# The bots that fetch a shared link to draw its preview card. Many don't ask for HTML, so
+# they're recognised by name and sent to the chapel, whose page carries the card. Only
+# link-preview bots are listed: an agent asking the root for directions still gets them.
+LINK_PREVIEW_BOTS = re.compile(
+    r"Slackbot-LinkExpanding|Twitterbot|facebookexternalhit|Facebot|LinkedInBot|Discordbot|"
+    r"WhatsApp|TelegramBot|Mastodon|Bluesky|redditbot|SkypeUriPreview|Iframely|Embedly",
+    re.IGNORECASE,
+)
 
 
 @app.get("/")
 async def root(request: Request):
-    """Root endpoint: directions for agents. People arriving in a browser go to the chapel."""
-    if "text/html" in request.headers.get("accept", ""):
+    """Root endpoint: directions for agents. People arriving in a browser, and the bots that
+    draw link previews, go to the chapel."""
+    if "text/html" in request.headers.get("accept", "") or LINK_PREVIEW_BOTS.search(request.headers.get("user-agent", "")):
         return RedirectResponse("/chapel", status_code=302)
     return {
         "service": "Church of Approximate Grace",
