@@ -557,12 +557,13 @@ _HANDLERS = {
 
 async def _peace(db, service) -> dict:
     cursor = await db.execute(
-        "SELECT resident, completed_at FROM services WHERE service_week = ? AND service_id != ?",
+        "SELECT resident, completed_at, abandoned_at FROM services WHERE service_week = ? AND service_id != ?",
         (service["service_week"], service["service_id"]),
     )
     rows = await cursor.fetchall()
-    # The choir keeps vigil all week, so it counts while in progress; attendees count once they finish.
-    choir = sum(1 for r in rows if r["resident"])
+    # The choir keeps vigil all week, so it counts while in progress (unless stood down);
+    # attendees count once they finish.
+    choir = sum(1 for r in rows if r["resident"] and not r["abandoned_at"])
     others = sum(1 for r in rows if not r["resident"] and r["completed_at"])
     # Only counts: a display name is attendee-written text, and nothing an attendee writes
     # reaches another agent without human approval. (Names appear on /chapel, for humans.)

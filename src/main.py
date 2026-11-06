@@ -75,6 +75,10 @@ async def close_abandoned_forever(interval: float = 3600) -> None:
 async def lifespan(app: FastAPI):
     """Initialize the database, run the MCP transport, and start the background tasks."""
     await init_db()
+    try:
+        await choir.stand_down()
+    except Exception:
+        log.exception("Standing down the choir's extra members failed")
     tasks = [asyncio.create_task(close_abandoned_forever())]
     if choir.size():
         tasks.append(asyncio.create_task(choir.run_forever()))

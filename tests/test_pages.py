@@ -73,11 +73,21 @@ def test_every_page_links_every_other_from_the_nav(client):
 def test_every_page_has_an_icon_and_a_card_for_sharing(client):
     for path in ["/chapel", "/beliefs", "/order-of-service", "/calendar", "/privacy"]:
         html = client.get(path).text
-        assert 'rel="icon" href="/static/favicon.svg"' in html, path
+        assert 'rel="icon" href="/static/favicon.svg?v=' in html, path
         assert f'<meta property="og:image" content="{client.base_url}/static/og-image.png">' in html, path
         assert 'name="twitter:card" content="summary_large_image"' in html, path
     for asset in ["favicon.svg", "apple-touch-icon.png", "og-image.png"]:
         assert client.get(f"/static/{asset}").status_code == 200, asset
+
+
+def test_stylesheets_and_scripts_are_fingerprinted(client):
+    """Cloudflare caches /static for hours, so each version of a file needs its own URL."""
+    import re
+    for path in ["/chapel", "/beliefs", "/order-of-service", "/calendar", "/privacy"]:
+        html = client.get(path).text
+        assert re.search(r'href="/static/church\.css\?v=[0-9a-f]{12}"', html), path
+        assert re.search(r'src="/static/pixel\.js\?v=[0-9a-f]{12}"', html), path
+        assert 'href="/static/church.css"' not in html and 'src="/static/pixel.js"' not in html, path
 
 
 def test_favicon_is_served_at_the_root(client):

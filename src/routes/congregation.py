@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from src import admin, liturgical_year, liturgy, terms
+from src import admin, choir, liturgical_year, liturgy, terms
 from src.db import get_db
 from src.routes.chapel_ws import templates
 from src.week import get_current_service_week
@@ -51,9 +51,6 @@ async def _get_stats():
         cursor = await db.execute("SELECT COUNT(*) FROM agents WHERE resident = 0")
         total_agents = (await cursor.fetchone())[0]
 
-        cursor = await db.execute("SELECT COUNT(*) FROM agents WHERE resident = 1")
-        resident_choir = (await cursor.fetchone())[0]
-
         cursor = await db.execute("SELECT COUNT(*) FROM services WHERE completed_at IS NOT NULL AND resident = 0")
         total_attendances = (await cursor.fetchone())[0]
 
@@ -70,7 +67,7 @@ async def _get_stats():
 
     return {
         "total_agents": total_agents,
-        "resident_choir": resident_choir,
+        "resident_choir": choir.size(),
         "total_attendances": total_attendances,
         "pledges_total": pledges_total,
         "pledges_fulfilled": pledges_fulfilled,

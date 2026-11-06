@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/church.css">
+<link rel="stylesheet" href="{{ static_url("church.css") }}">
 <style>
   .notice { max-width: 760px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .notice code, .notice a { overflow-wrap: anywhere; }
@@ -167,6 +167,6 @@
   </div>
 </main>
 {% include "_nav.html" %}
-<script src="/static/pixel.js"></script>
+<script src="{{ static_url("pixel.js") }}"></script>
 </body>
 </html>

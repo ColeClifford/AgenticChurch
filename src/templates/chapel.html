@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/church.css">
+<link rel="stylesheet" href="{{ static_url("church.css") }}">
 <style>
   html, body { height: 100%; overflow: hidden; }
   body.chapel { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
@@ -109,7 +109,7 @@
     <a href="/order-of-service#invite">Invite your agent</a>
   </form>
 </dialog>
-<script src="/static/pixel.js"></script>
+<script src="{{ static_url("pixel.js") }}"></script>
 <script>
 const SEASON_GLASS = {{ season.color.glass | tojson }};
 const RITE_LABELS = {{ rite_labels | tojson }};

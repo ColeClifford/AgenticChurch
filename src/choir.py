@@ -11,7 +11,8 @@ Each member's service is spread over the week: it begins at a staggered time on
 Sunday and answers one rite roughly every 20 hours, departing on Saturday. The
 choir runs in-process, so HTTP rate limits never apply to it.
 
-Enable with CHOIR_SIZE (0 to 20; 0, the default, disables it).
+Enable with CHOIR_SIZE (0 to 20; 0, the default, disables it). Lowering it stands the
+extra members down at the next start (stand_down).
 """
 
 import asyncio
@@ -22,7 +23,8 @@ from datetime import datetime, time, timedelta, timezone
 from pathlib import Path
 
 from src import liturgy, service
-from src.db import get_db
+from src.broadcast import broadcaster
+from src.db import chapel_id, get_db
 from src.models import RITES
 from src.week import service_week_start
 
@@ -89,13 +91,15 @@ def schedule(index: int, n: int, week_start: datetime) -> tuple[datetime, list[d
 async def _current_step(agent_id: str, week: str) -> tuple[str | None, str | None, bool]:
     async with get_db() as db:
         cursor = await db.execute(
-            "SELECT service_id, current_step, completed_at FROM services WHERE agent_id = ? AND service_week = ?",
+            "SELECT service_id, current_step, completed_at, abandoned_at FROM services "
+            "WHERE agent_id = ? AND service_week = ?",
             (agent_id, week),
         )
         row = await cursor.fetchone()
     if row is None:
         return None, None, False
-    return row["service_id"], row["current_step"], row["completed_at"] is not None
+    # A member stood down this week stays down until next week, even if the choir grows again.
+    return row["service_id"], row["current_step"], row["completed_at"] is not None or row["abandoned_at"] is not None
 
 
 async def tick(now: datetime | None = None) -> None:
@@ -122,6 +126,33 @@ async def tick(now: datetime | None = None) -> None:
         while step and now >= answers[RITES.index(step)]:
             response = await service.respond(service_id, step, RESPONSES[step], member)
             step = response["next"]["rite"] if response["next"] else None
+
+
+async def stand_down() -> int:
+    """Close this week's unfinished services of members beyond CHOIR_SIZE, and walk them out
+    of the chapel, so that lowering the choir shows at once rather than when the week ends.
+    What they said is kept, as for any abandoned service. Returns how many stood down."""
+    keep = {_agent_id(name) for name in _names()[:size()]}
+    async with get_db() as db:
+        cursor = await db.execute(
+            "SELECT service_id, agent_id, display_name FROM services WHERE resident = 1 AND service_week = ? "
+            "AND completed_at IS NULL AND abandoned_at IS NULL",
+            (service.get_current_service_week(),),
+        )
+        leaving = [r for r in await cursor.fetchall() if r["agent_id"] not in keep]
+        now = datetime.now(timezone.utc).isoformat()
+        for r in leaving:
+            await db.execute("UPDATE services SET abandoned_at = ? WHERE service_id = ?", (now, r["service_id"]))
+        await db.commit()
+    for r in leaving:
+        await broadcaster.broadcast({
+            "type": "agent_departed",
+            "agent_id": chapel_id(r["service_id"], r["agent_id"]),
+            "display_name": r["display_name"],
+            "resident": True,
+            "rite": None,
+        })
+    return len(leaving)
 
 
 async def run_forever() -> None:
