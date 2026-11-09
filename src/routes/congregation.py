@@ -129,6 +129,7 @@ async def dashboard(request: Request):
         request,
         stats=await _get_stats(),
         health=await admin.health(),
+        funnel=await admin.membership_funnel(),
         pending=await admin.moderation_queue("pending", 50),
         flagged=await admin.moderation_queue("flagged", 50),
         log=await admin.recent_log(25),

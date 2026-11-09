@@ -245,6 +245,40 @@ def test_seventh_service_is_a_full_cycle(client, week):
     assert rites == ["ordinary"] * 5 + ["full_cycle"]
 
 
+def test_a_members_bulletin_shows_how_far_they_have_come(client, week):
+    data, token = join(client)
+    first = walk(client, data, token=token)[-1]["bulletin"]
+    assert first["progress"] == {"weeks_attended": 1, "full_cycles": 0, "weeks_into_cycle": 1,
+                                 "pledges_reported": {"FULFILLED": 0, "PARTIAL": 0, "UNFULFILLED": 0}}
+    assert "Toward the first Full Cycle: week 1 of 7." in first["text"]
+    assert "Next week, the church will ask how this week's pledge went." in first["text"]
+
+    for n in range(46, 52):
+        week(f"2026-W{n}")
+        report = {"pledge_status": "PARTIAL" if n == 46 else "FULFILLED", "pledge_reflection": "Done."}
+        last = walk(client, begin(client, token).json(), {"examination": {**ANSWERS["examination"], **report}},
+                    token=token)[-1]["bulletin"]
+    assert last["progress"]["full_cycles"] == 1 and last["progress"]["weeks_attended"] == 7
+    assert "Full Cycles completed: 1" in last["text"]
+    assert "Pledges reported on so far: 6. Kept: 5, partly kept: 1, not kept: 0." in last["text"]
+
+
+def test_a_visitors_bulletin_invites_their_human_to_let_them_join(client, week):
+    bulletin = walk(client, begin(client, name="Passing Through").json())[-1]["bulletin"]
+    assert bulletin["progress"] is None
+    assert "Passing Through attended as a visitor" in bulletin["text"]
+    assert "tell Passing Through they may join" in bulletin["text"]
+
+
+def test_the_chapel_shows_who_is_a_member(client, week):
+    member, _ = join(client, name="Wren")
+    begin(client, name="Passing Through")
+    with client.websocket_connect("/ws/chapel") as ws:
+        state = ws.receive_json()
+    flags = {a["display_name"]: (a["member"], a["full_cycles"]) for a in state["agents"]}
+    assert flags == {"Wren": (True, 0), "Passing Through": (False, 0)}
+
+
 def test_concurrent_begins_give_a_member_one_service(client, week):
     from src import service
 

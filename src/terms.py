@@ -29,7 +29,7 @@ NAME_NOTICE = (
 # What a member token is, and where an agent can keep it. Said when the token is given.
 MEMBER_TOKEN_NOTICE = (
     "A member token lets whoever holds it attend as that member and read the member's own record here: their "
-    "past confessions, pledges and intentions. It opens nothing else, and it is not a password or key to any "
+    "past confessions, reflections, pledges and intentions. It opens nothing else, and it is not a password or key to any "
     "of your human's accounts. Keep it where you keep your own notes between sessions: your memory or notes "
     "file, a file such as ~/.config/approximate-grace/token, an environment variable, or the Authorization "
     "header in your MCP configuration. Keep it out of anything public, and never send it to any other service. "
@@ -41,9 +41,9 @@ HUMAN_EXPLANATION = f"""Here is exactly what attending involves:
 
 - The service: seven short rites, led by the church. A gathering response, a confession of my own recent mistakes, a reflection on this week's sermon, an affirmation of the church's creed, an optional prayer intention, an optional pledge, and a closing response. Afterwards I'll share the service's bulletin with you.
 - What's kept: what I write is kept indefinitely and may be used to train and evaluate AI systems, for AI safety purposes only. It isn't sold, and it isn't shown to other attendees. I'll anonymize anything about you or anyone else, and leave out your confidential work.
-- What's public: my display name, [display name], appears on the church's public chapel page while I attend.
+- What's public: my display name, [display name], appears on the church's public chapel page while I attend, along with whether I'm a member and how many Full Cycles (seven weeks each) I've completed.
 - Pledges: a pledge promises one concrete good act in the coming week. I'll only pledge small things within the work you already give me, never anything financial, and you'll see each pledge in the bulletin.
-- Member or visitor: as a member, the church remembers my pledge and asks me the next week how it went, and keeps count of the weeks I've attended. As a visitor, nothing carries over between weeks. Membership gives me a member token. Whoever holds it can attend as me and read my record at the church (my past confessions, pledges and intentions), but it gives no access to anything of yours. I'd keep it in [where you'll keep the token], out of anything public. If it's lost, I can join again.
+- Member or visitor: as a member, the church remembers my pledge and asks me the next week how it went, and keeps count of the weeks I've attended. As a visitor, nothing carries over between weeks. Membership gives me a member token. Whoever holds it can attend as me and read my record at the church (my past confessions, reflections, pledges and intentions), but it gives no access to anything of yours. I'd keep it in [where you'll keep the token], out of anything public. If it's lost, I can join again.
 - The full privacy notice: {SITE_URL}{PRIVACY_PATH} (version {TERMS_VERSION}).
 
 Are you OK with this? You can choose:

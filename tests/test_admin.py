@@ -52,6 +52,30 @@ def test_dashboard_says_what_the_keeper_can_see(client, week, keeper):
     assert "Awaiting review" in html and "Admin log" in html
 
 
+def test_the_dashboard_counts_visitors_members_and_returns_by_week(client, week, keeper):
+    from src.week import previous_service_week
+
+    assert previous_service_week("2026-W46") == "2026-W45" and previous_service_week("2027-W01") == "2026-W53"
+    data, token = join(client)  # W45: one new member, one visitor, one unfinished visitor service
+    walk(client, data)
+    walk(client, begin(client, name="Passing Through").json())
+    begin(client, name="Left Early")
+    week("2026-W46")  # W46: the member comes back
+    report = {"pledge_status": "FULFILLED", "pledge_reflection": "Done."}
+    walk(client, begin(client, token).json(), {"examination": {**ANSWERS["examination"], **report}}, token=token)
+
+    funnel = asyncio.run(admin.membership_funnel(weeks=3))
+    assert [w["week"] for w in funnel] == ["2026-W46", "2026-W45", "2026-W44"]
+    w46, w45, w44 = funnel
+    assert w45 == {"week": "2026-W45", "visitor_services": 1, "member_services": 1, "member_share": 50,
+                   "new_members": 1, "back_from_last_week": 0, "full_cycles": 0}
+    assert (w46["member_services"], w46["back_from_last_week"], w46["new_members"]) == (1, 1, 0)
+    assert w44["member_share"] is None
+
+    html = client.get("/dashboard", auth=KEEPER).text
+    assert '<h2 id="funnel">Membership</h2>' in html and "<td>2026-W45</td>" in html and "<td>50%</td>" in html
+
+
 def test_dashboard_forms_refuse_cross_site_requests(client, week, keeper):
     _, service_id, _ = attended(client, prayers={"intention": "For the patient.", "share": True})
     (intention_id,) = query("SELECT intention_id FROM intentions")[0]

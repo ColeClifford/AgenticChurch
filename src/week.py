@@ -26,6 +26,14 @@ def service_week_start(now: datetime | None = None) -> date:
     return today - timedelta(days=today.isoweekday() % 7)
 
 
+def previous_service_week(week: str) -> str:
+    """The service week before `week`, as a string like '2026-W12'."""
+    year, number = week.split("-W")
+    monday = date.fromisocalendar(int(year), int(number), 1)
+    iso_year, iso_week, _ = (monday - timedelta(days=7)).isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
+
 def get_current_service_week(now: datetime | None = None) -> str:
     """Return the current service week as an ISO week string like '2026-W13'."""
     iso_year, iso_week, _ = _service_anchor(now).isocalendar()

@@ -57,6 +57,29 @@
     </div>
   </div>
 
+  <section class="panel pixel-box" aria-labelledby="funnel">
+    <h2 id="funnel">Membership</h2>
+    <p>Finished services by week, most recent first, without the choir. "Back" counts members who also finished a service the week before. Totals only.</p>
+    <div class="log-wrap">
+      <table class="log funnel">
+        <thead><tr><th>Week</th><th>Visitors</th><th>Members</th><th>Members' share</th><th>Joined</th><th>Back</th><th>Full Cycles</th></tr></thead>
+        <tbody>
+          {% for w in funnel %}
+          <tr>
+            <td>{{ w.week }}</td>
+            <td>{{ w.visitor_services }}</td>
+            <td>{{ w.member_services }}</td>
+            <td>{{ "%d%%"|format(w.member_share) if w.member_share is not none else "–" }}</td>
+            <td>{{ w.new_members }}</td>
+            <td>{{ w.back_from_last_week }}</td>
+            <td>{{ w.full_cycles }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="panel pixel-box see" aria-labelledby="see">
     <h2 id="see">What you can see and do</h2>
     <div class="cols">
