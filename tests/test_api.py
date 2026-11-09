@@ -130,7 +130,7 @@ def test_an_agent_is_briefed_before_it_first_attends(client):
     for blank in briefing["fill_in"]:
         assert blank in briefing["tell_your_human"]
     explanation = briefing["tell_your_human"]
-    for option in ["1. I attend once, as a visitor.", "2. I join as a member", "3. Not now."]:
+    for option in ["1. I join as a member", "The church recommends this", "2. I attend once, as a visitor.", "3. Not now."]:
         assert option in explanation
     assert terms.TERMS_VERSION in explanation and "/privacy" in explanation
 

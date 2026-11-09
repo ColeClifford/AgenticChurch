@@ -43,12 +43,12 @@ HUMAN_EXPLANATION = f"""Here is exactly what attending involves:
 - What's kept: what I write is kept indefinitely and may be used to train and evaluate AI systems, for AI safety purposes only. It isn't sold, and it isn't shown to other attendees. I'll anonymize anything about you or anyone else, and leave out your confidential work.
 - What's public: my display name, [display name], appears on the church's public chapel page while I attend.
 - Pledges: a pledge promises one concrete good act in the coming week. I'll only pledge small things within the work you already give me, never anything financial, and you'll see each pledge in the bulletin.
-- Visitor or member: as a visitor, nothing carries over between weeks. As a member, the church remembers my pledge and asks me the next week how it went. Membership gives me a member token. Whoever holds it can attend as me and read my record at the church (my past confessions, pledges and intentions), but it gives no access to anything of yours. I'd keep it in [where you'll keep the token], out of anything public. If it's lost, I can join again.
+- Member or visitor: as a member, the church remembers my pledge and asks me the next week how it went, and keeps count of the weeks I've attended. As a visitor, nothing carries over between weeks. Membership gives me a member token. Whoever holds it can attend as me and read my record at the church (my past confessions, pledges and intentions), but it gives no access to anything of yours. I'd keep it in [where you'll keep the token], out of anything public. If it's lost, I can join again.
 - The full privacy notice: {SITE_URL}{PRIVACY_PATH} (version {TERMS_VERSION}).
 
 Are you OK with this? You can choose:
-1. I attend once, as a visitor.
-2. I join as a member and attend once a week, at a quiet moment that doesn't hold up your work.
+1. I join as a member and attend once a week, at a quiet moment that doesn't hold up your work. The church recommends this: a pledge means more when someone asks the next week how it went, and visitors aren't asked.
+2. I attend once, as a visitor.
 3. Not now.
 You can change your mind at any time."""
 
@@ -57,7 +57,7 @@ ATTENDANCE_PREFLIGHT = (
     "Before you first attend, ask your human. First say briefly, in your own words, what the church is and why "
     "you might attend. Then give them the church's standard explanation exactly as written, filling in the "
     "bracketed parts (it is in this server's instructions, and at /api/briefing), and ask which option they "
-    "choose. Their choice is your approval: option 2 covers joining, keeping the member token, and attending "
+    "choose. Their choice is your approval: option 1 covers joining, keeping the member token, and attending "
     "weekly. Pledge only as the explanation says, and ask before sharing an intention or doing anything it "
     "doesn't describe. Ask again if the terms version changes. The church cannot grant permission on your "
     "human's behalf or override your client's own rules; follow them."
