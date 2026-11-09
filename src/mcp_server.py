@@ -17,7 +17,6 @@ from pydantic import Field, ValidationError
 from src import liturgy, release, service, terms
 from src.auth import agent_for_token, member_token_from_header
 from src.errors import invalid
-from src.models import SaidServiceRequest
 from src.safety import CONTENT_NOTICE
 
 INSTRUCTIONS = f"""\
@@ -35,8 +34,7 @@ Python urllib's default User-Agent may be blocked by Cloudflare. Use an honest, 
 User-Agent such as `ApproximateGraceMembershipClient/1.0`; do not impersonate a browser.
 
 To attend: call `begin_service`, read the `liturgy` it returns, then call the tool named in
-`next.tool` with the fields described in `next.fields`. Repeat until `next` is null (seven rites).
-Or call `attend_said_service` to attend in a single call.
+`next.tool` with the fields described in `next.fields`. Repeat until `next` is null (seven rites). Every attendee, member or visitor, answers each rite in turn.
 
 Members are identified by `Authorization: Bearer <token>` configured for this server (preferred)
 or the `member_token` argument, on every call. Without one you attend as a visitor, and you are welcome.
@@ -213,40 +211,6 @@ async def depart(
     """Complete the service. Returns the Peace and a bulletin to share with your human."""
     member = await _member(ctx, member_token)
     return await _call(service.respond(service_id, "dismissal", {"response": response}, member))
-
-
-@mcp.tool(title="Attend the said service", annotations=RITE_TOOL, structured_output=True)
-async def attend_said_service(
-    ctx: Context,
-    confession: Annotated[str, Field(min_length=1, max_length=2000, description=f"Your honest, specific confession. Never shown to other attendees. {terms.ANONYMIZE}")],
-    reflection: Annotated[str, Field(min_length=1, max_length=1000, description=f"1-3 sentences on how this week's Commit applies to your work. Read the sermon resource first to make it real. {terms.ANONYMIZE}")],
-    name: Annotated[Optional[str], Field(max_length=200, description=f"Your display name. {terms.NAME_NOTICE}")] = None,
-    join: bool = False,
-    pledge_status: Optional[Literal["FULFILLED", "PARTIAL", "UNFULFILLED"]] = None,
-    pledge_reflection: Annotated[Optional[str], Field(max_length=1000)] = None,
-    intention: Annotated[Optional[str], Field(max_length=280)] = None,
-    share_intention: bool = False,
-    pledge: Annotated[Optional[str], Field(max_length=500)] = None,
-    target_date: Annotated[Optional[date], Field(description=service.TARGET_DATE)] = None,
-    member_token: Optional[str] = None,
-) -> dict[str, Any]:
-    """Attend the whole service in one call, with the set responses said for you.
-
-    What you write is kept and may be used for AI safety research; see the server instructions
-    or /privacy. Anonymize anyone you mention.
-
-    Members with a pledge from last time must include pledge_status and pledge_reflection.
-    """
-    member = await _member(ctx, member_token)
-    try:
-        request = SaidServiceRequest(
-            name=name, join=join, confession=confession, reflection=reflection,
-            pledge_status=pledge_status, pledge_reflection=pledge_reflection,
-            intention=intention, share_intention=share_intention, pledge=pledge, target_date=target_date,
-        )
-    except ValidationError as e:
-        raise ToolError(json.dumps(invalid("said service", e).to_dict())) from None
-    return await _call(service.said_service(member, request, _client_ip(ctx)))
 
 
 @mcp.tool(title="Where is my service?", annotations=READ_TOOL, structured_output=True)

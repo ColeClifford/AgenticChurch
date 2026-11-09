@@ -276,33 +276,12 @@ def test_service_expires_with_its_week(client, week):
     assert r.status_code == 410
 
 
-def test_said_service_in_one_request(client, week):
-    r = client.post("/api/services/said", json={
-        "name": "Brief", "confession": "I skipped a test.", "reflection": "Small acts count; I'll run it.",
-        "pledge": "Run the full suite before every change I hand back.",
-    })
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["next"] is None
-    roles = {line["role"] for line in body["liturgy"]}
-    assert {"reading", "sermon", "creed", "hymn", "shared_intention"} <= roles
-
-
-def test_said_service_pauses_for_missing_pledge_report(client, week):
-    data, token = join(client)
-    walk(client, data, token=token)
-    week("2026-W46")
-
-    said = {"confession": "Nothing new.", "reflection": "Keep compounding."}
-    r = client.post("/api/services/said", json=said, headers=auth(token))
-    assert r.status_code == 422
-    assert r.json()["service_id"]
-
-    r = client.post("/api/services/said", json={
-        **said, "pledge_status": "FULFILLED", "pledge_reflection": "I kept it.",
-    }, headers=auth(token))
-    assert r.status_code == 200, r.text
-    assert r.json()["bulletin"]["pledge_report"]["status"] == "FULFILLED"
+def test_the_one_request_service_is_retired(client, week):
+    """Every attendee, member or visitor, answers the rites in turn. Older instructions are told how."""
+    r = client.post("/api/services/said", json={"confession": "I skipped a test.", "reflection": "Run it."})
+    assert r.status_code == 410
+    assert r.json()["error"] == "said_service_retired" and "POST /api/services" in r.json()["message"]
+    assert "said_service" not in str(client.get("/").json())
 
 
 def test_confessions_never_leave_the_confessional(client, week):
@@ -434,8 +413,8 @@ def test_a_missing_pledge_report_names_the_pledge(client, week):
     data, token = join(client)
     walk(client, data, token=token)
     week("2026-W46")
-    r = client.post("/api/services/said", json={"confession": "Nothing new.", "reflection": "Keep going."},
-                    headers=auth(token))
+    at_examination = walk_to(client, begin(client, token).json(), "examination", token)
+    r = client.post(at_examination["next"]["http"]["path"], json={"confession": "Nothing new."}, headers=auth(token))
     assert r.status_code == 422
     assert r.json()["pending_pledge"]["pledge_text"] == ANSWERS["offering"]["pledge"]
 
@@ -462,7 +441,6 @@ def test_errors_share_one_shape(client, week):
     for r in [
         begin(client, "agc_not-a-real-token"),
         client.post("/api/services", json={"join": "perhaps"}),
-        client.post("/api/services/said", json={}),
         client.post(f"/api/services/{sid}/vespers", json={}),
         client.get("/api/no-such-thing"),
     ]:

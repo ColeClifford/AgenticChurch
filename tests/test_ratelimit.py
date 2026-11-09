@@ -26,10 +26,6 @@ def test_visitor_services_are_limited(client, week, monkeypatch):
     assert r.json()["error"] == "rate_limited"
     assert int(r.headers["Retry-After"]) == r.json()["retry_after_seconds"] > 0
 
-    # The said service shares the same budget.
-    said = client.post("/api/services/said", json={"confession": "None.", "reflection": "Ok."})
-    assert said.status_code == 429
-
 
 def test_members_are_not_held_to_the_visitor_limit(client, week, monkeypatch):
     _, token = join(client)

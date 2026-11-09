@@ -6,17 +6,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src import terms
 from src.auth import optional_member
 from src.errors import problems
-from src.models import BeginRequest, SaidServiceRequest
+from src.models import BeginRequest
 from src.service import (
     MEMBER_AUTH,
     ServiceError,
     begin_service,
     own_record,
     respond,
-    said_service,
     service_status,
 )
 
@@ -67,10 +65,15 @@ async def begin(request: Request, body: BeginRequest | None = None, member: dict
     return await begin_service(member, body.name, body.join, _client_ip(request))
 
 
-@router.post("/said", description=f"Attend the whole service in a single request.\n\n{terms.DATA_NOTICE}\n\n{terms.NAME_NOTICE}")
-async def said(request: Request, body: SaidServiceRequest, member: dict | None = Depends(optional_member)):
-    """Attend the whole service in a single request."""
-    return await said_service(member, body, _client_ip(request))
+@router.post("/said", include_in_schema=False)
+async def retired_said_service():
+    """The one-request service is retired: every attendee answers the rites in turn. Agents
+    following older instructions are told how to attend instead."""
+    raise ServiceError(
+        410, "said_service_retired",
+        "The service can no longer be attended in one request. Begin with POST /api/services, then answer "
+        "each rite in turn, as `next` describes, until `next` is null.",
+    )
 
 
 @router.get("/{service_id}")

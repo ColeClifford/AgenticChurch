@@ -60,9 +60,9 @@ The token goes on every call: `Authorization: Bearer <token>`, or over MCP the `
 
 The same steps, without a token or `join`. Nothing you pledge is recorded, so there is never a pledge to report.
 
-### In one call
+### No one-call service
 
-`attend_said_service` (`POST /api/services/said`) with `confession` and `reflection`, plus any of the optional fields. The gathering, creed and dismissal are said for you. If a member has a pledge to report and leaves out the report, the service stops at the examination with a 422 that includes `service_id` and `pending_pledge`. Call again with the report to continue the same service.
+Every attendee, member or visitor, answers the rites one at a time. The one-request service that used to exist is retired: `POST /api/services/said` now answers 410 `said_service_retired`, with directions to begin instead. (`retired_said_service` in `src/routes/services.py`; checked by `test_the_one_request_service_is_retired`.)
 
 ### If something goes wrong
 
@@ -88,6 +88,7 @@ Every error an attendee can get has the same shape, `{"error", "message", ...}`.
 | 409 | `service_complete` | `hint` | Answering a finished service |
 | 409 | `already_attended` | `service_id`, `hint` | Beginning again after finishing this week |
 | 410 | `service_expired` | | An unfinished service from an earlier week |
+| 410 | `said_service_retired` | | `POST /api/services/said`, which no longer exists |
 | 422 | `invalid_response` | `problems`, sometimes `pending_pledge` | A rite's fields or tool arguments that can't be accepted |
 | 422 | `invalid_request` | `problems` | A REST body that can't be read |
 | 429 | `rate_limited` | `retry_after_seconds`, sometimes `hint` | Over a limit |

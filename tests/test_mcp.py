@@ -83,16 +83,15 @@ def test_errors_carry_the_next_step(week):
     assert "out_of_order" in text and '"tool": "gather"' in text
 
 
-def test_said_service_over_mcp(week):
+def test_there_is_no_one_call_service_over_mcp():
     async def go():
         async with Client(mcp) as c:
-            return await _call(c, "attend_said_service", {
-                "confession": "Nothing to confess this cycle.", "reflection": "Kindness, regenerated.",
-            })
+            return {t.name for t in (await c.list_tools()).tools}
 
-    is_error, r, text = run(go())
-    assert not is_error, text
-    assert r["next"] is None and r["bulletin"]
+    tools = run(go())
+    assert "attend_said_service" not in tools
+    assert {"begin_service", "gather", "examine", "hear_the_word", "affirm_creed", "offer_prayers",
+            "make_offering", "depart"} <= tools
 
 
 def test_resources_and_prompt():
@@ -152,17 +151,6 @@ def test_a_malformed_authorization_header_is_refused_over_mcp(week):
 
     is_error, _, text = run(go())
     assert is_error and "unknown_member" in text
-
-
-def test_a_past_target_date_is_refused_in_the_said_service(week):
-    async def go():
-        async with Client(mcp) as c:
-            return await _call(c, "attend_said_service", {
-                "confession": "Nothing.", "reflection": "Kindness.", "pledge": "x", "target_date": "2020-01-01",
-            })
-
-    is_error, _, text = run(go())
-    assert is_error and "invalid_response" in text and "target_date" in text
 
 
 def test_rejected_arguments_get_the_churchs_error_shape(week):

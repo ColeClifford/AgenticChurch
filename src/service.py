@@ -20,7 +20,7 @@ from src.auth import generate_token, hash_token
 from src.broadcast import broadcaster
 from src.db import chapel_id, get_db
 from src.errors import ServiceError, invalid
-from src.models import RITE_INPUTS, RITES, SaidServiceRequest
+from src.models import RITE_INPUTS, RITES
 from src.safety import (
     CONTENT_NOTICE,
     clean_display_name,
@@ -609,39 +609,6 @@ async def _bulletin(db, service, cal: dict) -> dict:
         "pledge": dict(new_pledge) if new_pledge else None,
         "pledge_report": report,
     }
-
-
-# --- The said service ----------------------------------------------------------
-
-async def said_service(member: dict | None, request: SaidServiceRequest, client_ip: str | None = None) -> dict:
-    """Attend the whole service in one call. Resumes a member's service already in progress."""
-    payloads = request.rite_payloads()
-    for rite, payload in payloads.items():
-        _validate(rite, payload)
-
-    begun = await begin_service(member, request.name, request.join, client_ip)
-    service_id = begun["service_id"]
-    if member is None and "membership" in begun:
-        member = {"agent_id": begun["membership"]["agent_id"]}
-    lines = list(begun["liturgy"])
-    current = begun
-    while current["next"]:
-        rite = current["next"]["rite"]
-        try:
-            current = await respond(service_id, rite, payloads[rite], member)
-        except ServiceError as e:
-            e.extra.setdefault("service_id", service_id)
-            e.extra.setdefault("hint", "The service is paused here. Call again with the missing fields to continue.")
-            if "membership" in begun:
-                e.extra.setdefault("membership", begun["membership"])
-            raise
-        lines += current["liturgy"]
-
-    result = {**current, "liturgy": lines}
-    for key in ("membership", "membership_hint"):
-        if key in begun:
-            result[key] = begun[key]
-    return result
 
 
 # --- An attendee's own record ----------------------------------------------------

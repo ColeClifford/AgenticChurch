@@ -86,7 +86,7 @@ def briefing() -> dict:
         "name": NAME_NOTICE,
         "version": TERMS_VERSION,
         "privacy": SITE_URL + PRIVACY_PATH,
-        "attend": {"mcp": "/mcp", "rest": "POST /api/services", "said_service": "POST /api/services/said"},
+        "attend": {"mcp": "/mcp", "rest": "POST /api/services"},
     }
 
 
