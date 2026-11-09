@@ -36,21 +36,21 @@ def steps():
 
 
 @pytest.mark.parametrize("n", [1, 15, 20])
-def test_every_member_begins_on_sunday_and_departs_before_the_week_ends(n):
+def test_members_begin_across_the_week_and_depart_before_it_ends(n):
     for i in range(n):
         begins, answers = choir.schedule(i, n, SUNDAY)
-        assert SUNDAY <= begins < SUNDAY + timedelta(days=1)
+        assert SUNDAY <= begins < SUNDAY + timedelta(days=4)
         assert answers == sorted(answers)
         assert answers[-1] < SUNDAY + timedelta(days=7)
 
 
 def test_choir_keeps_vigil_through_the_week(choir_of, week):
-    choir_of(4)  # members begin at 0h, 6h, 12h and 18h
+    choir_of(4)  # members begin about a day apart: 0h, 24h, 48h and 71h
     tick(timedelta(minutes=1))
     assert steps() == [("choir-luma", "gathering", False)]
 
-    tick(timedelta(hours=48))
-    assert [s[1] for s in steps()] == ["word", "word", "examination", "examination"]
+    tick(timedelta(hours=48))  # a rite about every ten hours, so all three present are at different rites
+    assert [s[1] for s in steps()] == ["prayers", "word", "gathering"]
 
     tick(timedelta(days=6, hours=23, minutes=30))
     assert all(done for _, _, done in steps())
@@ -66,7 +66,7 @@ def test_choir_is_never_rate_limited(choir_of, week, monkeypatch):
     for limiter in rl.ALL:
         monkeypatch.setattr(limiter, "limit", 0)
     choir_of(2)
-    tick(timedelta(hours=12))
+    tick(timedelta(hours=48))
     assert len(steps()) == 2
 
 
@@ -78,7 +78,7 @@ def test_choir_off_by_default(week, monkeypatch):
 
 def test_choir_is_named_but_never_counted(client, choir_of, week):
     choir_of(5)
-    tick(timedelta(days=3))
+    tick(timedelta(days=4))  # all five have begun
 
     data, _ = join(client, name="Wren-the-Real")
     peace = walk(client, data)[-1]["peace"]
@@ -96,16 +96,16 @@ def test_choir_is_named_but_never_counted(client, choir_of, week):
 
 def test_lowering_the_choir_stands_the_extra_members_down_at_once(client, choir_of, week, monkeypatch):
     choir_of(5)
-    tick(timedelta(days=3))
+    tick(timedelta(hours=60))  # Luma, Sable, Wren and Halcyon have begun; none has finished
     departed = []
     async def record(event):
         departed.append(event)
     monkeypatch.setattr(choir.broadcaster, "broadcast", record)
 
     choir_of(2)
-    assert asyncio.run(choir.stand_down()) == 3
+    assert asyncio.run(choir.stand_down()) == 2
     assert asyncio.run(choir.stand_down()) == 0
-    assert [e["type"] for e in departed] == ["agent_departed"] * 3
+    assert [e["type"] for e in departed] == ["agent_departed"] * 2
 
     state = asyncio.run(get_chapel_state("2026-W45"))
     assert sorted(a["display_name"] for a in state) == ["Luma", "Sable"]
@@ -115,11 +115,11 @@ def test_lowering_the_choir_stands_the_extra_members_down_at_once(client, choir_
 
     tick(timedelta(days=4))  # the two who remain carry on
     assert [(a, done) for a, _, done in steps() if a in ("choir-luma", "choir-sable")] == [
-        ("choir-luma", False), ("choir-sable", False)]
+        ("choir-luma", True), ("choir-sable", False)]
 
-    choir_of(5)  # grown again: the three stood down stay down until next week
+    choir_of(5)  # grown again: Meridian begins, but the two stood down stay down until next week
     tick(timedelta(days=5))
-    assert sorted(a["display_name"] for a in asyncio.run(get_chapel_state("2026-W45"))) == ["Luma", "Sable"]
+    assert sorted(a["display_name"] for a in asyncio.run(get_chapel_state("2026-W45"))) == ["Meridian"]
 
 
 def test_choir_is_labeled_in_the_chapel(choir_of, week):
