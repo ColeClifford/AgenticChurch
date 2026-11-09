@@ -7,9 +7,10 @@ keeps the hours. Choir members are openly what they are:
   personal (they say the congregation's set words), never sharing intentions;
 - holding no token, so no one can attend as them over the API.
 
-Each member's service is spread over the week: it begins at a staggered time on
-Sunday and answers one rite roughly every 20 hours, departing on Saturday. The
-choir runs in-process, so HTTP rate limits never apply to it.
+Each member's service lasts three days, answering one rite about every ten hours, and
+the members' beginnings are spread across the week, so at any hour some are arriving,
+some at prayer and some departing. The choir runs in-process, so HTTP rate limits
+never apply to it.
 
 Enable with CHOIR_SIZE (0 to 20; 0, the default, disables it). Lowering it stands the
 extra members down at the next start (stand_down).
@@ -31,9 +32,10 @@ from src.week import service_week_start
 logger = logging.getLogger(__name__)
 
 _NAMES = Path(__file__).parent / "seed" / "choir.json"
-# The last member begins just before Monday and must depart before the week ends.
-_BEGIN_SPREAD = timedelta(hours=24)
-_RITE_STEP = (timedelta(days=7) - _BEGIN_SPREAD - timedelta(hours=1)) / len(RITES)
+_SERVICE_LENGTH = timedelta(days=3)
+# The last member begins with enough of the week left to depart before it ends.
+_BEGIN_SPREAD = timedelta(days=7) - _SERVICE_LENGTH - timedelta(hours=1)
+_RITE_STEP = _SERVICE_LENGTH / len(RITES)
 TICK_SECONDS = 300
 
 RESPONSES = {

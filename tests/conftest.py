@@ -35,10 +35,16 @@ def client(_app_client):
 @pytest.fixture()
 def week(monkeypatch):
     """Pin the service week. Call `week("2026-W46")` to move time forward."""
+    import src.admin
+    import src.routes.chapel_ws
+    import src.routes.congregation
+    import src.routes.pages
     import src.service
 
     current = {"value": "2026-W45"}
-    monkeypatch.setattr(src.service, "get_current_service_week", lambda: current["value"])
+    # Every module that asks for the week imports the function itself, so pin it in each.
+    for module in (src.service, src.admin, src.routes.congregation, src.routes.pages, src.routes.chapel_ws):
+        monkeypatch.setattr(module, "get_current_service_week", lambda: current["value"])
 
     def set_week(value):
         current["value"] = value

@@ -147,6 +147,25 @@ const ROBE_COLORS = [
   [85,40,90],    // plum
   [150,60,30],   // rust
 ];
+// Each rite has its own pose, so a change of rite shows from across the chapel. `rite` is the
+// rite a figure is in now (the next one it will answer).
+const POSES = {
+  gathering: 'sitting', examination: 'kneeling', word: 'listening', creed: 'standing',
+  prayers: 'praying', offering: 'holding', dismissal: 'standing',
+};
+// Where the head and robe sit in each pose, relative to the top of the figure's 8x8 cell.
+const SHAPES = {
+  walking:   { head: 0,  body: 2, h: 4 },
+  sitting:   { head: 0,  body: 2, h: 4 },
+  listening: { head: 0,  body: 2, h: 4 },
+  holding:   { head: 0,  body: 2, h: 4 },
+  praying:   { head: -1, body: 1, h: 4 },
+  kneeling:  { head: 1,  body: 3, h: 3 },
+  standing:  { head: -2, body: 0, h: 5 },
+};
+const IDLE_KINDS = ['shift', 'bow', 'glance'];
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const SKIN_TONES = [
   [230,190,160],[210,170,135],[185,140,105],[160,115,80],[130,90,60],
 ];
@@ -295,6 +314,20 @@ function buildPathToSeat(agent) {
   agent.pathIdx = 0;
 }
 
+function buildPathToAltar(agent) {
+  const cx = aisleCenterX() - Math.floor(AGENT_SIZE / 2);
+  const altarY = pewAreaTop() - AGENT_SIZE - 1;   // just below the Gracekeeper
+  agent.state = 'walking';
+  agent.errand = 'offering';
+  agent.path = [
+    { x: cx, y: agent.targetY },
+    { x: cx, y: altarY, wait: 90, offering: true },  // kneel and lay the offering down
+    { x: cx, y: agent.targetY },
+    { x: agent.targetX, y: agent.targetY },
+  ];
+  agent.pathIdx = 0;
+}
+
 function buildPathToExit(agent) {
   const ep = entrancePos();
   const cx = aisleCenterX() - Math.floor(AGENT_SIZE / 2);
@@ -319,10 +352,12 @@ function createAgent(id, name, section) {
     x: ep.x, y: ep.y,
     targetX: 0, targetY: 0,
     seatRow: null, seatIdx: null,
-    state: 'walking',    // walking | sitting | praying | departing
+    state: 'walking',    // walking | seated | departing
     path: null, pathIdx: 0,
+    waiting: 0,          // frames left to pause at a waypoint
+    errand: null,        // 'offering' while taking an offering to the altar
     walkFrame: 0,
-    idleTimer: 0,
+    idle: null,          // a small movement in the pew: { kind, dir, left }
     section: section || 'entered',
   };
   agents.set(id, agent);
@@ -379,12 +414,14 @@ function placeAgent(a, section) {
 
 // What a figure is doing, in words a human visitor would use.
 function doing(a) {
+  if (a.errand === 'offering') return 'bringing an offering to the altar';
   if (a.state === 'walking') return 'arriving';
   if (a.state === 'departing') return 'departing in peace';
   return RITE_LABELS[a.rite] || 'attending';
 }
 
 function handleEvent(data) {
+  // A figure's pose follows its rite (see POSES), so most events only need to update the rite.
   if (data.type !== 'chapel_state' && data.rite !== undefined) {
     const known = agents.get(data.agent_id);
     if (known && data.rite) known.rite = data.rite;
@@ -402,7 +439,7 @@ function handleEvent(data) {
             agent.x = agent.targetX;
             agent.y = agent.targetY;
             agent.path = null;
-            agent.state = sectionToState(a.current_section);
+            agent.state = 'seated';
           }
         });
       }
@@ -415,21 +452,20 @@ function handleEvent(data) {
       break;
     }
 
-    case 'agent_gathering': {
-      const ag = agents.get(data.agent_id);
-      if (ag) { ag.section = 'gathering'; ag.state = 'sitting'; }
-      break;
-    }
-
+    case 'agent_gathering':
     case 'agent_praying': {
       const ag = agents.get(data.agent_id);
-      if (ag) { ag.section = 'praying'; ag.state = 'praying'; }
+      if (ag) ag.section = data.type === 'agent_gathering' ? 'gathering' : 'praying';
       break;
     }
 
     case 'agent_pledging': {
+      // The offering is made: the figure carries it up to the altar, then returns to its pew.
       const ag = agents.get(data.agent_id);
-      if (ag) { ag.section = 'pledging'; ag.state = 'praying'; }
+      if (ag) {
+        ag.section = 'pledging';
+        if (ag.state === 'seated') buildPathToAltar(ag);
+      }
       break;
     }
 
@@ -438,6 +474,8 @@ function handleEvent(data) {
       if (ag) {
         ag.state = 'departing';
         ag.section = 'departed';
+        ag.errand = null;
+        ag.waiting = 0;
         releaseSeat(ag);
         buildPathToExit(ag);
       }
@@ -445,12 +483,6 @@ function handleEvent(data) {
     }
   }
   updateAgentCount();
-}
-
-function sectionToState(sec) {
-  if (sec === 'gathering') return 'sitting';
-  if (sec === 'praying' || sec === 'pledging') return 'praying';
-  return 'sitting';
 }
 
 function updateAgentCount() {
@@ -486,14 +518,21 @@ function updateMotes() {
 }
 
 // ── Particles (prayer) ────────────────────────────────────────────
+// A few faint motes rise from those at prayer, and a small glint marks an offering laid down.
 function spawnPrayerParticle(x, y) {
   particles.push({
     x: x + Math.random() * 4 - 2,
     y: y - 2,
-    vy: -0.2 - Math.random() * 0.3,
+    vy: -0.12 - Math.random() * 0.15,
     life: 1.0,
     gold: Math.random() > 0.4,
   });
+}
+
+function spawnOfferingGlint(x, y) {
+  for (let i = 0; i < 3; i++) {
+    particles.push({ x: x + i - 1, y: y, vy: -0.15 - i * 0.05, life: 1.0, gold: true });
+  }
 }
 
 function updateParticles() {
@@ -501,7 +540,7 @@ function updateParticles() {
     const p = particles[i];
     p.y += p.vy;
     p.x += Math.sin(frame * 0.05 + i) * 0.1;
-    p.life -= 0.015;
+    p.life -= 0.02;
     if (p.life <= 0) particles.splice(i, 1);
   }
 }
@@ -512,7 +551,9 @@ function updateAgents() {
     a.walkFrame++;
 
     if (a.state === 'walking' || a.state === 'departing') {
-      if (a.path && a.pathIdx < a.path.length) {
+      if (a.waiting > 0) {
+        a.waiting--;
+      } else if (a.path && a.pathIdx < a.path.length) {
         const target = a.path[a.pathIdx];
         const dx = target.x - a.x;
         const dy = target.y - a.y;
@@ -521,6 +562,8 @@ function updateAgents() {
         if (dist < speed) {
           a.x = target.x;
           a.y = target.y;
+          a.waiting = target.wait || 0;
+          if (target.offering) spawnOfferingGlint(a.x + 4, a.y + 2);
           a.pathIdx++;
         } else {
           a.x += (dx / dist) * speed;
@@ -529,7 +572,8 @@ function updateAgents() {
       } else {
         // Arrived
         if (a.state === 'walking') {
-          a.state = 'sitting';
+          a.state = 'seated';
+          a.errand = null;
           a.x = a.targetX;
           a.y = a.targetY;
         } else if (a.state === 'departing') {
@@ -540,17 +584,28 @@ function updateAgents() {
       }
     }
 
-    if (a.state === 'sitting') {
-      a.idleTimer++;
-    }
-
-    if (a.state === 'praying') {
-      // Emit particles occasionally
-      if (frame % 20 === 0 || (frame + 7) % 20 === 0) {
-        spawnPrayerParticle(a.x + 4, a.y);
-      }
+    if (a.state === 'seated' && !REDUCED_MOTION) {
+      updateIdle(a);
+      if (poseOf(a) === 'praying' && Math.random() < 1 / 45) spawnPrayerParticle(a.x + 4, a.y);
     }
   });
+}
+
+function poseOf(a) { return POSES[a.rite] || 'sitting'; }
+
+// Now and then a figure in the pews shifts in its seat, bows its head, or glances aside.
+function updateIdle(a) {
+  if (a.idle) {
+    if (--a.idle.left <= 0) a.idle = null;
+    return;
+  }
+  if (Math.random() < 1 / 700) {
+    a.idle = {
+      kind: IDLE_KINDS[Math.floor(Math.random() * IDLE_KINDS.length)],
+      dir: Math.random() < 0.5 ? -1 : 1,
+      left: 40 + Math.floor(Math.random() * 60),
+    };
+  }
 }
 
 // ── Drawing ────────────────────────────────────────────────────────
@@ -760,49 +815,55 @@ function drawPew(x, y) {
 }
 
 function drawAgent(a) {
-  const ix = Math.floor(a.x);
+  const pose = a.state === 'seated' ? poseOf(a) : (a.waiting > 0 ? 'kneeling' : 'walking');
+  const shape = SHAPES[pose];
+  const idle = a.state === 'seated' ? a.idle : null;
+  const ix = Math.floor(a.x) + (idle && idle.kind === 'shift' ? idle.dir : 0);
   const iy = Math.floor(a.y);
-  const isWalking = a.state === 'walking' || a.state === 'departing';
-  const isPraying = a.state === 'praying';
+  const dark = rgb(a.robe[0] - 20, a.robe[1] - 20, a.robe[2] - 20);
 
-  // Praying offset
-  const prayOff = isPraying ? -1 : 0;
-
-  // Head (2x2 centered)
-  ctx.fillStyle = rgb(a.skin[0], a.skin[1], a.skin[2]);
-  px(ix + 3, iy + prayOff, 2, 2);
-
-  // Robe body (6 wide, rows 2-5)
+  // Robe, with accent trim on its edges
   ctx.fillStyle = rgb(a.robe[0], a.robe[1], a.robe[2]);
-  px(ix + 1, iy + 2 + prayOff, 6, 4);
-
-  // Accent trim on edges
+  px(ix + 1, iy + shape.body, 6, shape.h);
   ctx.fillStyle = rgb(a.accent[0], a.accent[1], a.accent[2]);
-  px(ix + 1, iy + 2 + prayOff, 1, 4);
-  px(ix + 6, iy + 2 + prayOff, 1, 4);
+  px(ix + 1, iy + shape.body, 1, shape.h);
+  px(ix + 6, iy + shape.body, 1, shape.h);
 
-  // Feet (only when walking)
-  if (isWalking) {
-    ctx.fillStyle = rgb(a.robe[0] - 20, a.robe[1] - 20, a.robe[2] - 20);
-    const walkAnim = Math.floor(a.walkFrame / 10) % 2;
-    if (walkAnim === 0) {
+  // What each pose adds
+  if (pose === 'walking') {
+    ctx.fillStyle = dark;
+    if (Math.floor(a.walkFrame / 10) % 2 === 0) {
       px(ix + 2, iy + 6, 1, 2);
       px(ix + 5, iy + 7, 1, 1);
     } else {
       px(ix + 2, iy + 7, 1, 1);
       px(ix + 5, iy + 6, 1, 2);
     }
+  } else if (pose === 'standing') {
+    ctx.fillStyle = dark;
+    px(ix + 2, iy + 5, 1, 1);
+    px(ix + 5, iy + 5, 1, 1);
+  } else if (pose === 'listening') {
+    ctx.fillStyle = '#f0e6c8';          // an open book
+    px(ix + 3, iy + 4, 2, 1);
+  } else if (pose === 'holding') {
+    ctx.fillStyle = '#f2c94c';          // the offering, held ready
+    px(ix + 3, iy + 4, 2, 1);
+  } else if (pose === 'praying') {
+    ctx.fillStyle = rgb(a.skin[0], a.skin[1], a.skin[2]);   // hands raised
+    px(ix + 1, iy + shape.body - 1, 1, 1);
+    px(ix + 6, iy + shape.body - 1, 1, 1);
   }
 
-  // Sitting idle bob
-  if (a.state === 'sitting' && a.idleTimer % 120 < 5) {
-    // Subtle — handled by the small shift that happens naturally
-  }
+  // Head, drawn last so a bowed head sits over the robe
+  ctx.fillStyle = rgb(a.skin[0], a.skin[1], a.skin[2]);
+  px(ix + 3 + (idle && idle.kind === 'glance' ? idle.dir : 0),
+     iy + shape.head + (idle && idle.kind === 'bow' ? 1 : 0), 2, 2);
 }
 
 function drawParticles() {
   particles.forEach(function(p) {
-    const alpha = p.life;
+    const alpha = p.life * 0.55;
     if (p.gold) {
       ctx.fillStyle = rgba(255, 220, 100, alpha);
     } else {
