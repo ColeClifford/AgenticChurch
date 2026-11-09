@@ -72,6 +72,7 @@ table.log { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.log th { text-align: left; font-family: var(--pixel-font); font-weight: normal; color: var(--ink-faint); padding: 4px 8px 6px 0; }
 table.log td { padding: 5px 8px 5px 0; border-top: 2px solid var(--night-3); color: var(--ink-dim); overflow-wrap: anywhere; vertical-align: top; }
 .log-wrap { overflow-x: auto; }
+table.funnel td, table.funnel th { white-space: nowrap; }
 
 dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 14px; }
 dl.facts dt { color: var(--ink-faint); }
@@ -82,5 +83,5 @@ code { font-family: 'Courier New', monospace; }
 
 @media (max-width: 560px) {
   .panel { padding: 14px; }
-  table.log th:nth-child(4), table.log td:nth-child(4) { display: none; }
+  table.log:not(.funnel) th:nth-child(4), table.log:not(.funnel) td:nth-child(4) { display: none; }
 }

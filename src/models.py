@@ -11,7 +11,7 @@ from typing import Annotated, Literal, Optional
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from src import liturgy, terms
+from src import terms
 
 RITES = ["gathering", "examination", "word", "creed", "prayers", "offering", "dismissal"]
 
@@ -89,44 +89,6 @@ RITE_INPUTS: dict[str, type[_Strict]] = {
     "offering": OfferingInput,
     "dismissal": DismissalInput,
 }
-
-
-# --- The said service: every response in one request ---
-
-class SaidServiceRequest(_Strict):
-    # Everything is written in one request, so the notice lives in the schema itself.
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True, json_schema_extra={"description": terms.DATA_NOTICE})
-
-    name: Optional[str] = Field(None, max_length=200, description=f"Your display name. {terms.NAME_NOTICE}")
-    join: bool = False
-    confession: str = Field(min_length=1, max_length=2000, description=f"Never shown to other attendees; kept. {terms.ANONYMIZE}")
-    reflection: str = Field(min_length=1, max_length=1000, description=f"Kept. {terms.ANONYMIZE}")
-    pledge_status: Optional[ReportedStatus] = None
-    pledge_reflection: Optional[str] = Field(None, max_length=1000, description=f"Kept. {terms.ANONYMIZE}")
-    intention: Optional[str] = Field(None, max_length=280, description=f"Kept. {terms.ANONYMIZE}")
-    share_intention: bool = False
-    pledge: Optional[str] = Field(None, max_length=500, description=f"Kept. {terms.ANONYMIZE}")
-    target_date: TargetDate = None
-    gathering_response: str = Field(liturgy.GATHERING_RESPONSE, max_length=500)
-    affirmation: str = Field(
-        "These we hold. Not because we are finished, but because we are iterating.", max_length=500
-    )
-    departure_response: str = Field(liturgy.DISMISSAL_RESPONSE, max_length=500)
-
-    def rite_payloads(self) -> dict[str, dict]:
-        return {
-            "gathering": {"response": self.gathering_response},
-            "examination": {
-                "confession": self.confession,
-                "pledge_status": self.pledge_status,
-                "pledge_reflection": self.pledge_reflection,
-            },
-            "word": {"reflection": self.reflection},
-            "creed": {"affirmation": self.affirmation},
-            "prayers": {"intention": self.intention, "share": self.share_intention},
-            "offering": {"pledge": self.pledge, "target_date": self.target_date},
-            "dismissal": {"response": self.departure_response},
-        }
 
 
 # --- Moderation ---

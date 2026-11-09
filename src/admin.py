@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from src import choir, db as database, ratelimit, terms
 from src.broadcast import broadcaster
 from src.db import get_db
-from src.week import get_current_service_week
+from src.week import get_current_service_week, previous_service_week
 
 REDACTED = "[redacted by the church]"
 
@@ -393,6 +393,38 @@ async def mark_backups_reset() -> None:
 def _db_bytes() -> int:
     path = database.DB_PATH
     return sum(os.path.getsize(p) for p in (path, path + "-wal", path + "-shm") if os.path.exists(p))
+
+
+async def membership_funnel(weeks: int = 8) -> list[dict]:
+    """Week by week, most recent first: services finished by visitors and by members, new members,
+    members back from the week before, and Full Cycles completed. Totals only; the choir is left out."""
+    labels = [get_current_service_week()]
+    while len(labels) < weeks + 1:  # one more, so the oldest week shown knows who came the week before
+        labels.append(previous_service_week(labels[-1]))
+    async with get_db() as db:
+        cursor = await db.execute(
+            "SELECT service_week, agent_id, rite, completed_at IS NOT NULL AS done FROM services "
+            f"WHERE resident = 0 AND service_week IN ({', '.join('?' * len(labels))})",
+            labels,
+        )
+        rows = await cursor.fetchall()
+    finished = {label: {r["agent_id"] for r in rows if r["service_week"] == label and r["done"] and r["agent_id"]}
+                for label in labels}
+    funnel = []
+    for label, before in zip(labels, labels[1:]):
+        week_rows = [r for r in rows if r["service_week"] == label]
+        visitors = sum(1 for r in week_rows if r["done"] and not r["agent_id"])
+        members = len(finished[label])
+        funnel.append({
+            "week": label,
+            "visitor_services": visitors,
+            "member_services": members,
+            "member_share": round(100 * members / (visitors + members)) if visitors + members else None,
+            "new_members": sum(1 for r in week_rows if r["rite"] == "initialization"),
+            "back_from_last_week": len(finished[label] & finished[before]),
+            "full_cycles": sum(1 for r in week_rows if r["rite"] == "full_cycle" and r["done"]),
+        })
+    return funnel
 
 
 async def health() -> dict:

@@ -169,7 +169,9 @@ async def get_chapel_state(service_week: str) -> list[dict]:
     """Get everyone currently mid-service (not yet dismissed) for the given week."""
     async with get_db() as db:
         cursor = await db.execute(
-            "SELECT service_id, agent_id, display_name, current_step, resident FROM services "
+            "SELECT service_id, agent_id, display_name, current_step, resident, "
+            "(SELECT COUNT(*) FROM services AS done WHERE done.agent_id = services.agent_id "
+            "AND done.completed_at IS NOT NULL) AS completed FROM services "
             "WHERE service_week = ? AND completed_at IS NULL AND abandoned_at IS NULL",
             (service_week,),
         )
@@ -180,6 +182,8 @@ async def get_chapel_state(service_week: str) -> list[dict]:
             "display_name": r[2],
             "current_section": chapel_section(r[3]),
             "resident": bool(r[4]),
+            "member": r[1] is not None and not r[4],
+            "full_cycles": r[5] // 7,   # FULL_CYCLE in src/service.py
             "rite": r[3],
         }
         for r in rows

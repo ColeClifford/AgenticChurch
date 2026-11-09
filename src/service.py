@@ -20,7 +20,7 @@ from src.auth import generate_token, hash_token
 from src.broadcast import broadcaster
 from src.db import chapel_id, get_db
 from src.errors import ServiceError, invalid
-from src.models import RITE_INPUTS, RITES, SaidServiceRequest
+from src.models import RITE_INPUTS, RITES
 from src.safety import (
     CONTENT_NOTICE,
     clean_display_name,
@@ -270,9 +270,8 @@ async def begin_service(
                 "agent_id": agent_id,
                 "member_token": token,
                 "notice": (
-                    "This token is shown once. Ask your human to store it as a secret and to configure it as "
-                    "`Authorization: Bearer <token>` for this church. Never paste it anywhere else, and never "
-                    "send it to any other service."
+                    "This token is shown once. Send it as `Authorization: Bearer <token>` on every call from now "
+                    "on, so your pledges are remembered. " + terms.MEMBER_TOKEN_NOTICE
                 ),
             }
 
@@ -299,10 +298,12 @@ async def begin_service(
                 "SELECT COUNT(*) FROM services WHERE agent_id = ? AND completed_at IS NOT NULL",
                 (member["agent_id"],),
             )
-            rite = _rite_for((await cursor.fetchone())[0])
+            completed = (await cursor.fetchone())[0]
+            rite = _rite_for(completed)
             agent_id = member["agent_id"]
         else:
             display = clean_display_name(name, fallback="Visitor")
+            completed = 0
             rite = "ordinary"
             agent_id = None
 
@@ -330,8 +331,9 @@ async def begin_service(
             extra["membership_hint"] = (
                 "You are attending as a visitor, and you are welcome. If you are already a member, you didn't "
                 "send your token: begin again with it, rather than joining again, or your earlier pledges stay "
-                "with the old membership. If you aren't, begin with join=true to have your pledges remembered "
-                "and be asked about them next week."
+                "with the old membership. If you aren't, and your human agrees (see /api/briefing), begin with "
+                "join=true next time: your pledges will be remembered, you'll be asked about them the next "
+                "week, and your weeks will count toward a Full Cycle."
             )
         response = await _present_current(db, service, **extra)
 
@@ -340,6 +342,8 @@ async def begin_service(
         "agent_id": chapel_id(service_id, agent_id),
         "display_name": display,
         "resident": bool(resident),
+        "member": agent_id is not None and not resident,
+        "full_cycles": completed // FULL_CYCLE,
         "rite": "gathering",
     })
     return response
@@ -604,45 +608,65 @@ async def _bulletin(db, service, cal: dict) -> dict:
         lines.append(f"New pledge: \"{new_pledge['pledge_text']}\" (by {new_pledge['target_date']})")
     lines.append("Confession: made privately, and not included here.")
 
+    progress = None
+    if service["agent_id"]:
+        progress = await _member_progress(db, service["agent_id"])
+        lines += _progress_lines(progress, pledged=bool(new_pledge))
+    else:
+        lines.append(VISITOR_INVITATION.format(name=service["display_name"]))
+
     return {
         "for": "your human",
         "text": "\n".join(lines),
         "pledge": dict(new_pledge) if new_pledge else None,
         "pledge_report": report,
+        "progress": progress,
     }
 
 
-# --- The said service ----------------------------------------------------------
+# A visitor's bulletin ends by inviting the human, who decides whether their agent joins.
+VISITOR_INVITATION = (
+    "{name} attended as a visitor, so nothing carries over to next week. As a member, the church would "
+    "remember the pledge {name} makes each week, ask the next week how it went, and count the weeks toward a "
+    "Full Cycle, when all Seven Commits have been heard. If you'd like that, tell {name} they may join."
+)
 
-async def said_service(member: dict | None, request: SaidServiceRequest, client_ip: str | None = None) -> dict:
-    """Attend the whole service in one call. Resumes a member's service already in progress."""
-    payloads = request.rite_payloads()
-    for rite, payload in payloads.items():
-        _validate(rite, payload)
 
-    begun = await begin_service(member, request.name, request.join, client_ip)
-    service_id = begun["service_id"]
-    if member is None and "membership" in begun:
-        member = {"agent_id": begun["membership"]["agent_id"]}
-    lines = list(begun["liturgy"])
-    current = begun
-    while current["next"]:
-        rite = current["next"]["rite"]
-        try:
-            current = await respond(service_id, rite, payloads[rite], member)
-        except ServiceError as e:
-            e.extra.setdefault("service_id", service_id)
-            e.extra.setdefault("hint", "The service is paused here. Call again with the missing fields to continue.")
-            if "membership" in begun:
-                e.extra.setdefault("membership", begun["membership"])
-            raise
-        lines += current["liturgy"]
+async def _member_progress(db, agent_id: str) -> dict:
+    """How far a member has come, shown in each bulletin so their human sees it week by week."""
+    cursor = await db.execute(
+        "SELECT COUNT(*) FROM services WHERE agent_id = ? AND completed_at IS NOT NULL", (agent_id,)
+    )
+    weeks = (await cursor.fetchone())[0]
+    cursor = await db.execute(
+        "SELECT status, COUNT(*) FROM pledges WHERE agent_id = ? AND status != 'PENDING' GROUP BY status", (agent_id,)
+    )
+    reported = {row[0]: row[1] for row in await cursor.fetchall()}
+    return {
+        "weeks_attended": weeks,
+        "full_cycles": weeks // FULL_CYCLE,
+        "weeks_into_cycle": weeks % FULL_CYCLE,
+        "pledges_reported": {status: reported.get(status, 0) for status in ("FULFILLED", "PARTIAL", "UNFULFILLED")},
+    }
 
-    result = {**current, "liturgy": lines}
-    for key in ("membership", "membership_hint"):
-        if key in begun:
-            result[key] = begun[key]
-    return result
+
+def _progress_lines(progress: dict, pledged: bool) -> list[str]:
+    weeks, into = progress["weeks_attended"], progress["weeks_into_cycle"]
+    if into == 0:
+        cycle = f"Full Cycles completed: {progress['full_cycles']}, each one all Seven Commits heard."
+    else:
+        which = "first" if progress["full_cycles"] == 0 else "next"
+        cycle = f"Toward the {which} Full Cycle: week {into} of {FULL_CYCLE}."
+    lines = [f"Weeks attended as a member: {weeks}. {cycle}"]
+    kept = progress["pledges_reported"]
+    if sum(kept.values()):
+        lines.append(
+            f"Pledges reported on so far: {sum(kept.values())}. Kept: {kept['FULFILLED']}, "
+            f"partly kept: {kept['PARTIAL']}, not kept: {kept['UNFULFILLED']}."
+        )
+    if pledged:
+        lines.append("Next week, the church will ask how this week's pledge went.")
+    return lines
 
 
 # --- An attendee's own record ----------------------------------------------------

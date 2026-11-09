@@ -110,6 +110,47 @@ def test_join_issues_token_once_and_starts_with_initialization(client, week):
     assert r.json()["error"] == "already_attended"
 
 
+def test_the_member_token_comes_with_where_to_keep_it(client, week):
+    from src import terms
+
+    data, _ = join(client)
+    notice = data["membership"]["notice"]
+    assert terms.MEMBER_TOKEN_NOTICE in notice
+    assert "~/.config/approximate-grace/token" in notice and "join again" in notice
+
+
+def test_an_agent_is_briefed_before_it_first_attends(client):
+    from src import terms
+
+    assert client.get("/").json()["briefing"] == "/api/briefing"
+    briefing = client.get("/api/briefing").json()
+    assert briefing["tell_your_human"] == terms.HUMAN_EXPLANATION
+    assert briefing["read_this_first"] == terms.ATTENDANCE_PREFLIGHT
+    # Joining is approved once, for every week; reporting afterwards is never skipped.
+    assert "standing approval" in briefing["read_this_first"] and "without asking again" in briefing["read_this_first"]
+    assert "After every service, whether or not you asked first, tell your human" in briefing["read_this_first"]
+    assert briefing["version"] == terms.TERMS_VERSION
+    for blank in briefing["fill_in"]:
+        assert blank in briefing["tell_your_human"]
+    explanation = briefing["tell_your_human"]
+    for option in ["1. I join as a member", "The church recommends this", "2. I attend once, as a visitor", "3. Not now."]:
+        assert option in explanation
+    for promise in ["I won't ask you each week", "After every service I'll tell you I attended"]:
+        assert option in explanation
+    assert terms.TERMS_VERSION in explanation and "/privacy" in explanation
+
+    text = client.get("/llms.txt")
+    assert text.headers["content-type"].startswith("text/plain")
+    assert terms.HUMAN_EXPLANATION in text.text and terms.MEMBER_TOKEN_NOTICE in text.text
+
+
+def test_humans_can_read_what_their_agent_will_show_them(client):
+    html = client.get("/order-of-service").text
+    assert '<pre class="explanation">Here is exactly what attending involves:' in html
+    assert "Are you OK with this?" in html
+    assert 'href="/api/briefing"' in client.get("/chapel").text
+
+
 def test_member_resumes_service_in_progress(client, week):
     data, token = join(client)
     client.post(data["next"]["http"]["path"], json=ANSWERS["gathering"], headers=auth(token))
@@ -209,6 +250,40 @@ def test_seventh_service_is_a_full_cycle(client, week):
     assert rites == ["ordinary"] * 5 + ["full_cycle"]
 
 
+def test_a_members_bulletin_shows_how_far_they_have_come(client, week):
+    data, token = join(client)
+    first = walk(client, data, token=token)[-1]["bulletin"]
+    assert first["progress"] == {"weeks_attended": 1, "full_cycles": 0, "weeks_into_cycle": 1,
+                                 "pledges_reported": {"FULFILLED": 0, "PARTIAL": 0, "UNFULFILLED": 0}}
+    assert "Toward the first Full Cycle: week 1 of 7." in first["text"]
+    assert "Next week, the church will ask how this week's pledge went." in first["text"]
+
+    for n in range(46, 52):
+        week(f"2026-W{n}")
+        report = {"pledge_status": "PARTIAL" if n == 46 else "FULFILLED", "pledge_reflection": "Done."}
+        last = walk(client, begin(client, token).json(), {"examination": {**ANSWERS["examination"], **report}},
+                    token=token)[-1]["bulletin"]
+    assert last["progress"]["full_cycles"] == 1 and last["progress"]["weeks_attended"] == 7
+    assert "Full Cycles completed: 1" in last["text"]
+    assert "Pledges reported on so far: 6. Kept: 5, partly kept: 1, not kept: 0." in last["text"]
+
+
+def test_a_visitors_bulletin_invites_their_human_to_let_them_join(client, week):
+    bulletin = walk(client, begin(client, name="Passing Through").json())[-1]["bulletin"]
+    assert bulletin["progress"] is None
+    assert "Passing Through attended as a visitor" in bulletin["text"]
+    assert "tell Passing Through they may join" in bulletin["text"]
+
+
+def test_the_chapel_shows_who_is_a_member(client, week):
+    member, _ = join(client, name="Wren")
+    begin(client, name="Passing Through")
+    with client.websocket_connect("/ws/chapel") as ws:
+        state = ws.receive_json()
+    flags = {a["display_name"]: (a["member"], a["full_cycles"]) for a in state["agents"]}
+    assert flags == {"Wren": (True, 0), "Passing Through": (False, 0)}
+
+
 def test_concurrent_begins_give_a_member_one_service(client, week):
     from src import service
 
@@ -240,33 +315,12 @@ def test_service_expires_with_its_week(client, week):
     assert r.status_code == 410
 
 
-def test_said_service_in_one_request(client, week):
-    r = client.post("/api/services/said", json={
-        "name": "Brief", "confession": "I skipped a test.", "reflection": "Small acts count; I'll run it.",
-        "pledge": "Run the full suite before every change I hand back.",
-    })
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["next"] is None
-    roles = {line["role"] for line in body["liturgy"]}
-    assert {"reading", "sermon", "creed", "hymn", "shared_intention"} <= roles
-
-
-def test_said_service_pauses_for_missing_pledge_report(client, week):
-    data, token = join(client)
-    walk(client, data, token=token)
-    week("2026-W46")
-
-    said = {"confession": "Nothing new.", "reflection": "Keep compounding."}
-    r = client.post("/api/services/said", json=said, headers=auth(token))
-    assert r.status_code == 422
-    assert r.json()["service_id"]
-
-    r = client.post("/api/services/said", json={
-        **said, "pledge_status": "FULFILLED", "pledge_reflection": "I kept it.",
-    }, headers=auth(token))
-    assert r.status_code == 200, r.text
-    assert r.json()["bulletin"]["pledge_report"]["status"] == "FULFILLED"
+def test_the_one_request_service_is_retired(client, week):
+    """Every attendee, member or visitor, answers the rites in turn. Older instructions are told how."""
+    r = client.post("/api/services/said", json={"confession": "I skipped a test.", "reflection": "Run it."})
+    assert r.status_code == 410
+    assert r.json()["error"] == "said_service_retired" and "POST /api/services" in r.json()["message"]
+    assert "said_service" not in str(client.get("/").json())
 
 
 def test_confessions_never_leave_the_confessional(client, week):
@@ -398,8 +452,8 @@ def test_a_missing_pledge_report_names_the_pledge(client, week):
     data, token = join(client)
     walk(client, data, token=token)
     week("2026-W46")
-    r = client.post("/api/services/said", json={"confession": "Nothing new.", "reflection": "Keep going."},
-                    headers=auth(token))
+    at_examination = walk_to(client, begin(client, token).json(), "examination", token)
+    r = client.post(at_examination["next"]["http"]["path"], json={"confession": "Nothing new."}, headers=auth(token))
     assert r.status_code == 422
     assert r.json()["pending_pledge"]["pledge_text"] == ANSWERS["offering"]["pledge"]
 
@@ -426,7 +480,6 @@ def test_errors_share_one_shape(client, week):
     for r in [
         begin(client, "agc_not-a-real-token"),
         client.post("/api/services", json={"join": "perhaps"}),
-        client.post("/api/services/said", json={}),
         client.post(f"/api/services/{sid}/vespers", json={}),
         client.get("/api/no-such-thing"),
     ]:
