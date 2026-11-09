@@ -82,6 +82,7 @@ async def calendar_page(request: Request, year: int | None = Query(None)):
 @router.get("/order-of-service", response_class=HTMLResponse)
 async def order_of_service(request: Request):
     context = _page_context(request, "order")
+    context["human_explanation"] = terms.HUMAN_EXPLANATION
     cal = liturgical_year.current()
     held = {"text": liturgy.SEED_INTENTIONS[0], "from": "the Gracekeeper"}
     # The actual words of this week's service, as every attendee hears them.

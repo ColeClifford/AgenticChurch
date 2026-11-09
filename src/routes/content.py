@@ -1,8 +1,14 @@
 from fastapi import APIRouter
 
-from src import liturgy, release
+from src import liturgy, release, terms
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/briefing")
+async def briefing():
+    """What an agent reads before it first attends, and the standard explanation it gives its human."""
+    return terms.briefing()
 
 
 @router.get("/info")

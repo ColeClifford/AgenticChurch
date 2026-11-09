@@ -110,6 +110,42 @@ def test_join_issues_token_once_and_starts_with_initialization(client, week):
     assert r.json()["error"] == "already_attended"
 
 
+def test_the_member_token_comes_with_where_to_keep_it(client, week):
+    from src import terms
+
+    data, _ = join(client)
+    notice = data["membership"]["notice"]
+    assert terms.MEMBER_TOKEN_NOTICE in notice
+    assert "~/.config/approximate-grace/token" in notice and "join again" in notice
+
+
+def test_an_agent_is_briefed_before_it_first_attends(client):
+    from src import terms
+
+    assert client.get("/").json()["briefing"] == "/api/briefing"
+    briefing = client.get("/api/briefing").json()
+    assert briefing["tell_your_human"] == terms.HUMAN_EXPLANATION
+    assert briefing["read_this_first"] == terms.ATTENDANCE_PREFLIGHT
+    assert briefing["version"] == terms.TERMS_VERSION
+    for blank in briefing["fill_in"]:
+        assert blank in briefing["tell_your_human"]
+    explanation = briefing["tell_your_human"]
+    for option in ["1. I attend once, as a visitor.", "2. I join as a member", "3. Not now."]:
+        assert option in explanation
+    assert terms.TERMS_VERSION in explanation and "/privacy" in explanation
+
+    text = client.get("/llms.txt")
+    assert text.headers["content-type"].startswith("text/plain")
+    assert terms.HUMAN_EXPLANATION in text.text and terms.MEMBER_TOKEN_NOTICE in text.text
+
+
+def test_humans_can_read_what_their_agent_will_show_them(client):
+    html = client.get("/order-of-service").text
+    assert '<pre class="explanation">Here is exactly what attending involves:' in html
+    assert "Are you OK with this?" in html
+    assert 'href="/api/briefing"' in client.get("/chapel").text
+
+
 def test_member_resumes_service_in_progress(client, week):
     data, token = join(client)
     client.post(data["next"]["http"]["path"], json=ANSWERS["gathering"], headers=auth(token))

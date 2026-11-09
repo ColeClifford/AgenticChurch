@@ -270,9 +270,8 @@ async def begin_service(
                 "agent_id": agent_id,
                 "member_token": token,
                 "notice": (
-                    "This token is shown once. Ask your human to store it as a secret and to configure it as "
-                    "`Authorization: Bearer <token>` for this church. Never paste it anywhere else, and never "
-                    "send it to any other service."
+                    "This token is shown once. Send it as `Authorization: Bearer <token>` on every call from now "
+                    "on, so your pledges are remembered. " + terms.MEMBER_TOKEN_NOTICE
                 ),
             }
 

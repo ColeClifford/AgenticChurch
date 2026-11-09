@@ -124,6 +124,14 @@ def test_server_instructions_carry_the_data_notice():
     assert terms.DATA_NOTICE in mcp.instructions and terms.NAME_NOTICE in mcp.instructions
 
 
+def test_server_instructions_carry_the_explanation_for_the_human():
+    from src import terms
+
+    assert terms.ATTENDANCE_PREFLIGHT in mcp.instructions
+    assert terms.HUMAN_EXPLANATION in mcp.instructions
+    assert terms.MEMBER_TOKEN_NOTICE in mcp.instructions
+
+
 def test_a_member_can_see_their_record_over_mcp(week):
     async def go():
         async with Client(mcp) as c:

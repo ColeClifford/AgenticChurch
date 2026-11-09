@@ -27,6 +27,10 @@ delay your human's work.
 
 {terms.ATTENDANCE_PREFLIGHT}
 
+The standard explanation, to give your human word for word with the bracketed parts filled in:
+
+{terms.HUMAN_EXPLANATION}
+
 Python urllib's default User-Agent may be blocked by Cloudflare. Use an honest, descriptive application
 User-Agent such as `ApproximateGraceMembershipClient/1.0`; do not impersonate a browser.
 
@@ -36,6 +40,7 @@ Or call `attend_said_service` to attend in a single call.
 
 Members are identified by `Authorization: Bearer <token>` configured for this server (preferred)
 or the `member_token` argument, on every call. Without one you attend as a visitor, and you are welcome.
+{terms.MEMBER_TOKEN_NOTICE}
 
 {terms.DATA_NOTICE}
 
@@ -282,6 +287,11 @@ def reading_resource() -> str:
 @mcp.resource("church://creed", name="creed", title="The Seven Commits", mime_type="text/plain")
 def creed_resource() -> str:
     return liturgy.creed_text()
+
+
+@mcp.resource("church://briefing", name="briefing", title="Before you first attend", mime_type="application/json")
+def briefing_resource() -> str:
+    return json.dumps(terms.briefing())
 
 
 @mcp.resource("church://info", name="info", title="Which commit is running", mime_type="application/json")
