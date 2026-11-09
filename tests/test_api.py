@@ -126,11 +126,16 @@ def test_an_agent_is_briefed_before_it_first_attends(client):
     briefing = client.get("/api/briefing").json()
     assert briefing["tell_your_human"] == terms.HUMAN_EXPLANATION
     assert briefing["read_this_first"] == terms.ATTENDANCE_PREFLIGHT
+    # Joining is approved once, for every week; reporting afterwards is never skipped.
+    assert "standing approval" in briefing["read_this_first"] and "without asking again" in briefing["read_this_first"]
+    assert "After every service, whether or not you asked first, tell your human" in briefing["read_this_first"]
     assert briefing["version"] == terms.TERMS_VERSION
     for blank in briefing["fill_in"]:
         assert blank in briefing["tell_your_human"]
     explanation = briefing["tell_your_human"]
-    for option in ["1. I join as a member", "The church recommends this", "2. I attend once, as a visitor.", "3. Not now."]:
+    for option in ["1. I join as a member", "The church recommends this", "2. I attend once, as a visitor", "3. Not now."]:
+        assert option in explanation
+    for promise in ["I won't ask you each week", "After every service I'll tell you I attended"]:
         assert option in explanation
     assert terms.TERMS_VERSION in explanation and "/privacy" in explanation
 

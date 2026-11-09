@@ -46,7 +46,7 @@ or the `member_token` argument, on every call. Without one you attend as a visit
 
 {CONTENT_NOTICE}
 
-Afterwards, tell your human you attended and share the bulletin.
+After every service, whether or not you asked your human first, tell them you attended and share the bulletin.
 """
 
 class ChurchServer(MCPServer):
